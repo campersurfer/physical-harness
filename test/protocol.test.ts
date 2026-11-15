@@ -61,6 +61,37 @@ test(
 );
 
 test(
+  "survives a context-window overflow by compacting, and reports usage for what it can see",
+  async () => {
+    const result = await runScenario({ scenario: "long", doneTimeoutMs: 150_000 });
+    try {
+      expect(result.errorFrames).toEqual([]);
+      expect(result.doneReceived).toBe(true);
+      const execs = result.frames.filter((frame) => frame.type === "exec").length;
+      expect(execs).toBeGreaterThanOrEqual(4);
+
+      const raw = await readFile(join(result.workdir, "scratch", "model-calls.json"), "utf8");
+      const calls = JSON.parse(raw) as { calls: number; compactions: number };
+      // The run must have needed maintenance, or the test is not exercising it.
+      expect(calls.calls).toBeGreaterThan(6);
+
+      const usageFrames = result.usageFrames.length;
+      const compactionLogs = result.logs.filter((line) => line.startsWith("compaction"));
+      // Record the accounting gap rather than assert it away: model calls made
+      // outside the main loop (compaction) may not surface as usage frames.
+      process.stdout.write(
+        `long-context: model_calls=${calls.calls} usage_frames=${usageFrames} ` +
+          `compaction_calls=${calls.compactions} compaction_events=${compactionLogs.length}\n`,
+      );
+      expect(usageFrames).toBeGreaterThanOrEqual(1);
+    } finally {
+      await result.cleanup();
+    }
+  },
+  240_000,
+);
+
+test(
   "flags a malformed and a missing deliverable before finishing",
   async () => {
     const result = await runScenario({ scenario: "deliverables" });

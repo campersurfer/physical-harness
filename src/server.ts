@@ -22,6 +22,15 @@ type Connection = {
   abortRequested: (() => void) | null;
 };
 
+/**
+ * Continuation text sent when a run stops with the model's last output being a
+ * tool call — the session ended mid-work (automatic compaction can do this),
+ * and the deliverables are not finished.
+ */
+const CONTINUE_PROMPT =
+  "Continue the task from where it stopped. The container still holds everything you wrote; " +
+  "re-read the instruction, check the files that exist, then finish the deliverables.";
+
 function parseTaskMessage(raw: string): TaskMessage {
   const parsed: unknown = JSON.parse(raw);
   if (parsed === null || typeof parsed !== "object") throw new Error("task message is not an object");
@@ -71,6 +80,11 @@ async function runTask(
   log: (text: string) => void,
 ): Promise<void> {
   let lastAssistantText = "";
+  // Two ways a run can stop mid-work: the model's last output was a tool call
+  // with no closing text, or automatic compaction ran and the session ended
+  // before doing any work with the compacted context.
+  let endedWithToolCall = false;
+  let compactedWithoutWork = false;
   let session: Awaited<ReturnType<typeof createPleSession>> | null = null;
   let unsubscribe: (() => void) | null = null;
 
@@ -116,8 +130,15 @@ async function runTask(
     unsubscribe = session.session.subscribe((event: { type: string; [key: string]: unknown }) => {
       if (event.type === "message_update") {
         const update = event.assistantMessageEvent as Record<string, unknown> | undefined;
-        if (update && update.type === "text_delta" && typeof update.delta === "string") {
+        if (!update) return;
+        if (update.type === "text_delta" && typeof update.delta === "string") {
           lastAssistantText += update.delta;
+          endedWithToolCall = false;
+          return;
+        }
+        if (update.type === "toolcall_start" || update.type === "toolcall_end") {
+          endedWithToolCall = true;
+          compactedWithoutWork = false; // real work resumed after any compaction
         }
         return;
       }
@@ -136,6 +157,15 @@ async function runTask(
           output: asCount(usageRecord.output),
           cacheRead: asCount(usageRecord.cacheRead),
         });
+        return;
+      }
+      if (event.type === "auto_compaction_start") {
+        log(`compaction started (${String(event.method ?? "unknown method")})`);
+        return;
+      }
+      if (event.type === "auto_compaction_end") {
+        log(`compaction ended (${String(event.method ?? "unknown method")})`);
+        compactedWithoutWork = true;
         return;
       }
       if (event.type === "agent_end" && event.isTerminal !== false) {
@@ -176,6 +206,31 @@ async function runTask(
         log(`turn attempt ${attempt} failed (${error instanceof Error ? error.message : String(error)}); retrying in ${waitSec}s`);
         await Bun.sleep(waitSec * 1000);
       }
+    }
+
+    // An ended run whose last output was a tool call has unfinished work: ask
+    // the same session to continue, a bounded number of times.
+    const MAX_CONTINUATIONS = 3;
+    for (
+      let extra = 1;
+      (endedWithToolCall || compactedWithoutWork) && extra <= MAX_CONTINUATIONS;
+      extra += 1
+    ) {
+      const remaining = bridge.secondsLeft();
+      if (remaining !== null && remaining <= MIN_REMAINING_SEC) break;
+      if (bridge.cancelled) break;
+      log(
+        `run ended mid-work (${endedWithToolCall ? "last output was a tool call" : "compaction ran, then the session stopped"}); ` +
+          `continuation ${extra}/${MAX_CONTINUATIONS}`,
+      );
+      endedWithToolCall = false;
+      compactedWithoutWork = false;
+      lastAssistantText = "";
+      await session.session.prompt(CONTINUE_PROMPT, {
+        runCommands: false,
+        expandPromptTemplates: false,
+        throwOnDrop: true,
+      });
     }
 
     const summary = lastAssistantText.trim().length > 0 ? lastAssistantText : "Task finished.";

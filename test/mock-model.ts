@@ -146,6 +146,63 @@ function deliverableCheckHandler() {
   };
 }
 
+/**
+ * Drives the conversation past a small context window so automatic compaction
+ * runs for real, then records how many model calls the session made versus how
+ * many usage frames the harness reported.
+ */
+function compactionHandler() {
+  // Driven by its own state, not by the conversation's shape: automatic
+  // compaction rewrites history, so counting messages would make the script
+  // depend on when maintenance happens to run.
+  const state = { calls: 0, execs: 0, wrote: false, compactions: 0 };
+  return async (context: { messages: unknown[] }): Promise<MockResponse> => {
+    state.calls += 1;
+    const lastUser = [...context.messages]
+      .reverse()
+      .find((message) => {
+        if (message === null || typeof message !== "object") return false;
+        return (message as Record<string, unknown>).role === "user";
+      });
+    const lastText = JSON.stringify(lastUser ?? {}).toLowerCase();
+    if (/compact|summar|handoff/.test(lastText) && state.calls > 1) {
+      state.compactions += 1;
+      return { content: ["Earlier turns: the agent listed files and wrote scratch output. Continue from here."] };
+    }
+    if (state.execs < 6) {
+      state.execs += 1;
+      return {
+        content: [
+          {
+            type: "toolCall",
+            name: "ple_exec",
+            arguments: {
+              command:
+                "mkdir -p scratch && for i in $(seq 1 40); do printf '%s\\n' \"line $i: padding padding padding padding padding padding\"; done > scratch/pad.txt && wc -l scratch/pad.txt && head -c 6000 scratch/pad.txt",
+            },
+          },
+        ],
+      };
+    }
+    if (!state.wrote) {
+      state.wrote = true;
+      return {
+        content: [
+          {
+            type: "toolCall",
+            name: "ple_write_file",
+            arguments: {
+              path: "scratch/model-calls.json",
+              content: JSON.stringify({ calls: state.calls, compactions: state.compactions }),
+            },
+          },
+        ],
+      };
+    }
+    return { content: "Finished the long-context run." };
+  };
+}
+
 function scriptFor(name: string): MockResponse[] {
   switch (name) {
     case "slow":
@@ -163,7 +220,9 @@ export async function createModel(): Promise<{ model: unknown; providerId: strin
   const mock = createMockModel(
     scenario === "deliverables"
       ? { handler: deliverableCheckHandler() as never }
-      : { responses: scriptFor(scenario) },
+      : scenario === "long"
+        ? { handler: compactionHandler() as never, contextWindow: 6_000, maxTokens: 2_000 }
+        : { responses: scriptFor(scenario) },
   );
   return { model: mock.model, providerId: "mock", apiKey: "test-key" };
 }
