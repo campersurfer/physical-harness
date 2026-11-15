@@ -27,6 +27,16 @@ type Connection = {
  * tool call — the session ended mid-work (automatic compaction can do this),
  * and the deliverables are not finished.
  */
+/**
+ * Steering text sent when the task's time budget is mostly spent. The paper's
+ * baseline loses runs to the time limit with nothing gradable written, so the
+ * agent is told to secure the deliverables before the evaluator stops it.
+ */
+const TIME_CHECKPOINT_PROMPT =
+  "Time check: roughly three quarters of the task budget is gone. Stop exploring and make the deliverables real now — " +
+  "write every file the task asked for at its exact path with your current best numbers, run ple_check_deliverables on " +
+  "those paths, fix what it flags, then keep improving the contents only while time remains.";
+
 const CONTINUE_PROMPT =
   "Continue the task from where it stopped. The container still holds everything you wrote; " +
   "re-read the instruction, check the files that exist, then finish the deliverables.";
@@ -107,6 +117,18 @@ async function runTask(
         log("deadline reached: wrapping up");
         connection.abortRequested?.();
       }, deadlineMs);
+    }
+    // Two bounded checkpoints while real time remains, so a slow task still
+    // produces deliverables instead of being stopped with nothing written.
+    const checkpoints = secondsLeft === null ? [] : [0.75, 0.9];
+    for (const fraction of checkpoints) {
+      const delayMs = Math.max(5, secondsLeft * fraction - WRAP_UP_MARGIN_SEC) * 1000;
+      if (delayMs >= deadlineMs!) continue;
+      setTimeout(() => {
+        if (connection.finished || bridge.cancelled || !session) return;
+        log(`time checkpoint at ${Math.round(fraction * 100)}% of the budget: steering to deliverables`);
+        void session.session.steer(TIME_CHECKPOINT_PROMPT).catch(() => undefined);
+      }, delayMs);
     }
 
     session = await createPleSession({

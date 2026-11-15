@@ -92,6 +92,31 @@ test(
 );
 
 test(
+  "steers the agent to write deliverables when most of the budget is gone",
+  async () => {
+    const result = await runScenario({
+      scenario: "checkpoint" as never,
+      limits: { agent_timeout_sec: 120, exec_timeout_sec: 60 },
+      doneTimeoutMs: 150_000,
+    });
+    try {
+      expect(result.errorFrames).toEqual([]);
+      expect(result.doneReceived).toBe(true);
+      expect(result.logs.some((line) => line.includes("time checkpoint"))).toBe(true);
+      const marker = JSON.parse(await readFile(join(result.workdir, "scratch", "steer-seen.json"), "utf8")) as {
+        calls: number;
+        execs: number;
+      };
+      // It must have done real work before the checkpoint, then acted on the steer.
+      expect(marker.execs).toBeGreaterThanOrEqual(2);
+    } finally {
+      await result.cleanup();
+    }
+  },
+  220_000,
+);
+
+test(
   "flags a malformed and a missing deliverable before finishing",
   async () => {
     const result = await runScenario({ scenario: "deliverables" });

@@ -36,7 +36,7 @@ export type ScenarioResult = {
 };
 
 export type ScenarioOptions = {
-  scenario?: "basic" | "slow" | "mcp";
+  scenario?: "basic" | "slow" | "mcp" | "deliverables" | "long" | "checkpoint";
   instruction?: string;
   limits?: { agent_timeout_sec: number | null; exec_timeout_sec: number };
   cancelAfterFirstRequest?: boolean;

@@ -203,6 +203,45 @@ function compactionHandler() {
   };
 }
 
+/**
+ * Keeps working until the harness steers it with a time checkpoint, then records
+ * that it saw the steer and finishes. Used with a short task budget.
+ */
+function checkpointHandler() {
+  const state = { calls: 0, seen: false, execs: 0 };
+  return async (context: { messages: unknown[] }): Promise<MockResponse> => {
+    state.calls += 1;
+    const text = JSON.stringify(context.messages).toLowerCase();
+    const steered = text.includes("three quarters of the task budget");
+    if (steered && !state.seen) {
+      state.seen = true;
+      return {
+        content: [
+          {
+            type: "toolCall",
+            name: "ple_write_file",
+            arguments: {
+              path: "scratch/steer-seen.json",
+              content: JSON.stringify({ calls: state.calls, execs: state.execs, steeredAt: state.calls }),
+            },
+          },
+        ],
+      };
+    }
+    if (state.seen) return { content: "Deliverables written after the time checkpoint." };
+    state.execs += 1;
+    return {
+      content: [
+        {
+          type: "toolCall",
+          name: "ple_exec",
+          arguments: { command: `echo exploring ${state.execs} && sleep 1` },
+        },
+      ],
+    };
+  };
+}
+
 function scriptFor(name: string): MockResponse[] {
   switch (name) {
     case "slow":
@@ -220,7 +259,9 @@ export async function createModel(): Promise<{ model: unknown; providerId: strin
   const mock = createMockModel(
     scenario === "deliverables"
       ? { handler: deliverableCheckHandler() as never }
-      : scenario === "long"
+      : scenario === "checkpoint"
+        ? { handler: checkpointHandler() as never, contextWindow: 100_000, maxTokens: 4_000 }
+        : scenario === "long"
         ? { handler: compactionHandler() as never, contextWindow: 6_000, maxTokens: 2_000 }
         : { responses: scriptFor(scenario) },
   );
