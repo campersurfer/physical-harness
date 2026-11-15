@@ -49,7 +49,10 @@ python3 ~/cursuspublicus/tools/ple-figures.py --receipts runs/<run>/receipts.jso
 
 `wind-diaphragm-shear` is `checks`, `footing-settlement-verification` is `rubric`, `lv-cable-sizing` is `checks-judge`.
 Watch peak memory: the largest dev tasks want 6 CPU and 16.25 GB, which exceeds a 15 GB host, so the first subset is
-deliberately small and the full set follows only after measuring.
+deliberately small and the full set follows only after measuring. The 12 `rubric` tasks run world environments whose
+images are around 17 GB and can take an hour to build the first time; if that blocks the first run, drop
+`footing-settlement-verification` and let the two non-rubric tasks prove the pipeline first — the judge path then
+follows on the same host with a warm image cache.
 
 ## Blocked on inputs
 
