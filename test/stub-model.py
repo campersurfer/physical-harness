@@ -197,6 +197,7 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.flush()
 
         chunk({"role": "assistant", "content": ""})
+        usage = {"prompt_tokens": 1200, "completion_tokens": 40, "total_tokens": 1240}
         if step.get("tool_calls"):
             for index, call in enumerate(step["tool_calls"]):
                 chunk(
@@ -217,6 +218,18 @@ class Handler(BaseHTTPRequestHandler):
             for piece in [str(step.get("content") or "")]:
                 chunk({"content": piece})
             chunk({}, "stop")
+        # Clients that ask for usage in the stream get their own final chunk, the
+        # way OpenAI-compatible gateways send it; without this the harness has
+        # nothing to report and cost accounting cannot be rehearsed.
+        usage_chunk = {
+            "id": call_id,
+            "object": "chat.completion.chunk",
+            "created": 0,
+            "model": model,
+            "choices": [],
+            "usage": usage,
+        }
+        self.wfile.write(f"data: {json.dumps(usage_chunk)}\n\n".encode())
         self.wfile.write(b"data: [DONE]\n\n")
         self.wfile.flush()
 
