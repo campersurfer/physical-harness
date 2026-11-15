@@ -120,8 +120,7 @@ async function loadTestModel(): Promise<{ model: unknown; providerId: string; ap
 
 export async function createPleSession(options: SessionOptions): Promise<PleSession> {
   const { bridge, instruction, workdir, secondsLeft } = options;
-  const modelName = process.env.MODEL_NAME;
-  if (!modelName) throw new Error("MODEL_NAME is not set");
+  const configuredModelName = process.env.MODEL_NAME;
 
   const systemPromptBody = await Bun.file(SYSTEM_PROMPT_PATH).text();
   const systemPrompt = [
@@ -146,7 +145,14 @@ export async function createPleSession(options: SessionOptions): Promise<PleSess
     "update.auto": false,
     "compaction.enabled": true,
     "compaction.idleEnabled": false,
+    // Transient gateway failures are retried inside the call, and the task loop
+    // in src/server.ts retries the whole turn on top of that; both are bounded so
+    // a dead endpoint surfaces instead of silently burning the budget.
     "retry.enabled": true,
+    "retry.maxRetries": 3,
+    "retry.baseDelayMs": 2000,
+    "retry.maxDelayMs": 30_000,
+    "retry.modelFallback": false,
   });
 
   const agentDir = process.env.HOME ? `${process.env.HOME}/.ple-omp` : "/tmp/ple-omp";
@@ -199,6 +205,10 @@ export async function createPleSession(options: SessionOptions): Promise<PleSess
     });
     session = created.session;
   } else {
+    // The real path always receives MODEL_NAME from the evaluator; the test path
+    // takes its identity from the injected model instead.
+    const modelName = configuredModelName;
+    if (!modelName) throw new Error("MODEL_NAME is not set");
     const limits = MODEL_LIMITS[modelName];
     if (!limits) {
       throw new Error(

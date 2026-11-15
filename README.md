@@ -10,7 +10,7 @@ evaluator.
 submission.yaml   entry name, model_api, install (Bun + deps), serve (bun serve.ts)
 serve.ts          starts the protocol server
 src/protocol.ts   protocol v1 client: requests, results, cancellation, usage, done/error
-src/tools.ts      ple_exec, ple_read_file, ple_write_file, ple_mcp
+src/tools.ts      ple_exec, ple_read_file, ple_write_file, ple_check_deliverables, ple_mcp
 src/mcp.ts        Streamable-HTTP MCP client tunneled through the protocol's `http` request
 src/omp.ts        OMP2 session construction: provider registration, confinement, prompt, limits
 src/server.ts     WebSocket lifecycle and the one-`done`-per-trial guarantee

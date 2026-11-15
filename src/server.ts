@@ -149,12 +149,34 @@ async function runTask(
       mcpServers: bridge.mcpServers.map((server) => server.name),
     });
 
-    lastAssistantText = "";
-    await session.session.prompt(prompt, {
-      runCommands: false,
-      expandPromptTemplates: false,
-      throwOnDrop: true,
-    });
+    // A gateway outage must not zero the whole task: retry the turn a bounded
+    // number of times while real task time remains, then report honestly.
+    const MAX_TURN_ATTEMPTS = 4;
+    const MIN_REMAINING_SEC = 300;
+    for (let attempt = 1; attempt <= MAX_TURN_ATTEMPTS; attempt += 1) {
+      lastAssistantText = "";
+      const attemptPrompt =
+        attempt === 1
+          ? prompt
+          : `${prompt}\n\n(A previous attempt at this task failed before it finished. Files already written are still in ` +
+            `place: re-read the instruction, inspect what exists, then finish the deliverables.)`;
+      try {
+        await session.session.prompt(attemptPrompt, {
+          runCommands: false,
+          expandPromptTemplates: false,
+          throwOnDrop: true,
+        });
+        break;
+      } catch (error) {
+        if (bridge.cancelled) throw error;
+        const remaining = bridge.secondsLeft();
+        const hasTime = remaining === null || remaining > MIN_REMAINING_SEC;
+        if (attempt >= MAX_TURN_ATTEMPTS || !hasTime) throw error;
+        const waitSec = Math.min(240, 30 * 2 ** (attempt - 1));
+        log(`turn attempt ${attempt} failed (${error instanceof Error ? error.message : String(error)}); retrying in ${waitSec}s`);
+        await Bun.sleep(waitSec * 1000);
+      }
+    }
 
     const summary = lastAssistantText.trim().length > 0 ? lastAssistantText : "Task finished.";
     const stats = bridge.stats;

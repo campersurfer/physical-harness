@@ -1,17 +1,21 @@
 /**
  * Local evaluator fixture: the other end of protocol v1.
  *
- * It plays the evaluator's role over a real WebSocket against the real serve.ts
- * process, executing requests against a real temporary workdir. This is how the
- * harness's protocol behavior is exercised without Docker, a model key, or the
- * gated dev-set download; the official kit remains the authority for the
- * container contract.
+ * It plays the evaluator's role over a real WebSocket against a real harness
+ * process, executing requests against a real temporary workdir. Two entry
+ * points:
+ *
+ *   runScenario()    - starts serve.ts itself (fast local iteration)
+ *   runAgainstUrl()  - drives a harness that is already running, e.g. the real
+ *                      serve container started by `kit up`
+ *
+ * Neither is a substitute for `kit check`, which is the authority for the
+ * container contract and the score.
  */
 
-import { mkdtemp, readFile, rm, stat } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join, resolve } from "node:path";
-import { mkdir } from "node:fs/promises";
 
 const MAX_OUTPUT_BYTES = 100_000;
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
@@ -22,9 +26,9 @@ export type ScenarioResult = {
   frames: Frame[];
   oneWay: Frame[];
   workdir: string;
-  exitCode: number | null;
   stderr: string;
   doneReceived: boolean;
+  finalFrame: Frame;
   errorFrames: Frame[];
   usageFrames: Frame[];
   logs: string[];
@@ -35,10 +39,10 @@ export type ScenarioOptions = {
   scenario?: "basic" | "slow" | "mcp";
   instruction?: string;
   limits?: { agent_timeout_sec: number | null; exec_timeout_sec: number };
-  /** Cancel the trial after the harness sends its first request. */
   cancelAfterFirstRequest?: boolean;
-  /** Milliseconds to wait for `done` before giving up. */
   doneTimeoutMs?: number;
+  /** Keep the temporary workdir instead of removing it during cleanup. */
+  keepWorkdir?: boolean;
 };
 
 function resolveTaskPath(workdir: string, path: string): string {
@@ -46,7 +50,6 @@ function resolveTaskPath(workdir: string, path: string): string {
 }
 
 async function runShell(workdir: string, command: string, timeoutSec: number) {
-  const started = Date.now();
   const proc = Bun.spawn(["bash", "-c", command], {
     cwd: workdir,
     stdout: "pipe",
@@ -74,13 +77,7 @@ async function runShell(workdir: string, command: string, timeoutSec: number) {
     output = `${head}\n[... truncated ...]\n${tail}`;
     truncated = true;
   }
-  return {
-    exit_code: timedOut ? 124 : exitCode,
-    output,
-    truncated,
-    timed_out: timedOut,
-    durationMs: Date.now() - started,
-  };
+  return { exit_code: timedOut ? 124 : exitCode, output, truncated, timed_out: timedOut };
 }
 
 /** Minimal Streamable-HTTP MCP server used by the `mcp` scenario. */
@@ -155,79 +152,50 @@ export function startMcpFixture(): { url: string; stop: () => void; calls: Frame
           { headers },
         );
       }
-      return Response.json({ jsonrpc: "2.0", id, error: { code: -32601, message: `unknown method ${method}` } }, { headers });
+      return Response.json(
+        { jsonrpc: "2.0", id, error: { code: -32601, message: `unknown method ${method}` } },
+        { headers },
+      );
     },
   });
   return { url: `http://127.0.0.1:${server.port}/mcp/`, stop: () => server.stop(true), calls };
 }
 
-async function waitForPort(port: number, deadlineMs: number): Promise<void> {
-  const deadline = Date.now() + deadlineMs;
-  while (Date.now() < deadline) {
-    try {
-      const socket = await Bun.connect({ hostname: "127.0.0.1", port, socket: { data() {}, open() {}, error() {}, close() {} } });
-      socket.end();
-      return;
-    } catch {
-      await Bun.sleep(120);
-    }
-  }
-  throw new Error(`harness did not accept a connection on port ${port} within ${deadlineMs} ms`);
+function waitForOpen(socket: WebSocket, timeoutMs: number): Promise<void> {
+  const deferred = Promise.withResolvers<void>();
+  const timer = setTimeout(() => deferred.reject(new Error("WebSocket to the harness never opened")), timeoutMs);
+  socket.addEventListener("open", () => {
+    clearTimeout(timer);
+    deferred.resolve();
+  });
+  socket.addEventListener("error", () => {
+    clearTimeout(timer);
+    deferred.reject(new Error("WebSocket to the harness failed"));
+  });
+  return deferred.promise;
 }
 
-export async function runScenario(options: ScenarioOptions = {}): Promise<ScenarioResult> {
+/**
+ * Drives a running harness: sends one task and answers its requests by executing
+ * them in a temporary workdir on this machine.
+ */
+export async function runAgainstUrl(url: string, options: ScenarioOptions = {}): Promise<ScenarioResult> {
   const scenario = options.scenario ?? "basic";
   const instruction =
     options.instruction ??
     "Review the estimate folder and produce results/deliverable.md with the corrected subtotal. Cite the sheet each number comes from.";
   const workdir = await mkdtemp(join(tmpdir(), "ple-fixture-"));
-  const stderrChunks: string[] = [];
   const mcp = scenario === "mcp" ? startMcpFixture() : null;
-  const port = 21_000 + Math.floor(Math.random() * 8_000);
-  const repoRoot = new URL("..", import.meta.url).pathname;
-
-  const proc = Bun.spawn([process.execPath, join(repoRoot, "serve.ts")], {
-    cwd: repoRoot,
-    env: {
-      ...process.env,
-      PORT: String(port),
-      PLE_LOG_LEVEL: "silent",
-      PLE_TEST_MODEL_MODULE: new URL("./mock-model.ts", import.meta.url).href,
-      PLE_TEST_SCRIPT: scenario,
-      MODEL_NAME: "claude-opus-5-5",
-    },
-    stdout: "pipe",
-    stderr: "pipe",
-  });
-  void (async () => {
-    for await (const chunk of proc.stderr as ReadableStream<Uint8Array>) {
-      stderrChunks.push(Buffer.from(chunk).toString("utf8"));
-    }
-  })();
-
-  const cleanup = async () => {
-    proc.kill();
-    mcp?.stop();
-    await rm(workdir, { recursive: true, force: true });
-  };
-
-  try {
-    await waitForPort(port, 30_000);
-  } catch (error) {
-    await cleanup();
-    throw new Error(`${String(error)}\n--- harness stderr ---\n${stderrChunks.join("")}`);
-  }
 
   const frames: Frame[] = [];
   const oneWay: Frame[] = [];
   const doneDeferred = Promise.withResolvers<Frame>();
   let cancelled = false;
 
-  const socket = new WebSocket(`ws://127.0.0.1:${port}/`);
+  const socket = new WebSocket(url);
   socket.addEventListener("message", (event) => {
     void (async () => {
       const frame = JSON.parse(String(event.data)) as Frame;
-      if (frame.type === "result") return;
       if (frame.type === "done" || frame.type === "error") {
         oneWay.push(frame);
         doneDeferred.resolve(frame);
@@ -251,12 +219,7 @@ export async function runScenario(options: ScenarioOptions = {}): Promise<Scenar
       try {
         if (frame.type === "exec") {
           const result = await runShell(workdir, String(frame.command ?? ""), Number(frame.timeout_sec ?? 120));
-          reply({
-            exit_code: result.exit_code,
-            output: result.output,
-            truncated: result.truncated,
-            timed_out: result.timed_out,
-          });
+          reply(result);
           return;
         }
         if (frame.type === "read_file") {
@@ -267,10 +230,9 @@ export async function runScenario(options: ScenarioOptions = {}): Promise<Scenar
             return;
           }
           const bytes = await readFile(target);
-          const clipped = bytes.subarray(0, MAX_FILE_BYTES);
           reply({
             ok: true,
-            content_b64: Buffer.from(clipped).toString("base64"),
+            content_b64: Buffer.from(bytes.subarray(0, MAX_FILE_BYTES)).toString("base64"),
             size: bytes.byteLength,
             truncated: bytes.byteLength > MAX_FILE_BYTES,
           });
@@ -280,8 +242,7 @@ export async function runScenario(options: ScenarioOptions = {}): Promise<Scenar
           const target = resolveTaskPath(workdir, path);
           await mkdir(dirname(target), { recursive: true });
           const data = Buffer.from(String(frame.content_b64 ?? ""), "base64");
-          const append = frame.append === true;
-          if (append) {
+          if (frame.append === true) {
             const existing = await readFile(target).catch(() => Buffer.alloc(0));
             await Bun.write(target, Buffer.concat([existing, data]));
           } else {
@@ -291,13 +252,13 @@ export async function runScenario(options: ScenarioOptions = {}): Promise<Scenar
           reply({ ok: true, size: info.size });
           return;
         }
-        const url = String(frame.url ?? "");
-        if (!mcp || !url.startsWith(new URL(mcp.url).origin)) {
-          reply({ ok: false, error: `url is not one of the task's MCP servers: ${url}` });
+        const requestUrl = String(frame.url ?? "");
+        if (!mcp || !requestUrl.startsWith(new URL(mcp.url).origin)) {
+          reply({ ok: false, error: `url is not one of the task's MCP servers: ${requestUrl}` });
           return;
         }
         const body = frame.body_b64 ? Buffer.from(String(frame.body_b64), "base64") : undefined;
-        const response = await fetch(url, {
+        const response = await fetch(requestUrl, {
           method: String(frame.method ?? "POST"),
           headers: (frame.headers ?? {}) as Record<string, string>,
           body,
@@ -320,18 +281,7 @@ export async function runScenario(options: ScenarioOptions = {}): Promise<Scenar
     })();
   });
 
-  await new Promise<void>((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error("WebSocket to harness never opened")), 15_000);
-    socket.addEventListener("open", () => {
-      clearTimeout(timer);
-      resolve();
-    });
-    socket.addEventListener("error", () => {
-      clearTimeout(timer);
-      reject(new Error("WebSocket to harness failed"));
-    });
-  });
-
+  await waitForOpen(socket, 20_000);
   socket.send(
     JSON.stringify({
       type: "task",
@@ -349,27 +299,92 @@ export async function runScenario(options: ScenarioOptions = {}): Promise<Scenar
     }),
   );
 
-  const doneTimeout = Promise.withResolvers<Frame>();
-  const timer = setTimeout(() => {
-    doneTimeout.reject(new Error(`harness never sent done/error within ${options.doneTimeoutMs ?? 90_000} ms`));
-  }, options.doneTimeoutMs ?? 90_000);
+  const doneBounded = Promise.withResolvers<Frame>();
+  const timer = setTimeout(
+    () => doneBounded.reject(new Error(`the harness never sent done/error within ${options.doneTimeoutMs ?? 90_000} ms`)),
+    options.doneTimeoutMs ?? 90_000,
+  );
   let finalFrame: Frame;
   try {
-    finalFrame = await Promise.race([doneDeferred.promise, doneTimeout.promise]);
+    finalFrame = await Promise.race([doneDeferred.promise, doneBounded.promise]);
   } finally {
     clearTimeout(timer);
   }
+
+  const cleanup = async () => {
+    socket.close();
+    mcp?.stop();
+    if (!options.keepWorkdir) await rm(workdir, { recursive: true, force: true });
+  };
 
   return {
     frames,
     oneWay,
     workdir,
-    exitCode: null,
-    stderr: stderrChunks.join(""),
+    stderr: "",
     doneReceived: finalFrame.type === "done",
+    finalFrame,
     errorFrames: oneWay.filter((frame) => frame.type === "error"),
     usageFrames: oneWay.filter((frame) => frame.type === "usage"),
     logs: oneWay.filter((frame) => frame.type === "log").map((frame) => String(frame.text ?? "")),
     cleanup,
+  };
+}
+
+/** Starts the repository's own serve.ts and drives it. */
+export async function runScenario(options: ScenarioOptions = {}): Promise<ScenarioResult> {
+  const scenario = options.scenario ?? "basic";
+  const stderrChunks: string[] = [];
+  const port = 21_000 + Math.floor(Math.random() * 8_000);
+  const repoRoot = new URL("..", import.meta.url).pathname;
+
+  const proc = Bun.spawn([process.execPath, join(repoRoot, "serve.ts")], {
+    cwd: repoRoot,
+    env: {
+      ...process.env,
+      PORT: String(port),
+      PLE_LOG_LEVEL: "silent",
+      PLE_TEST_MODEL_MODULE: new URL("./mock-model.ts", import.meta.url).href,
+      PLE_TEST_SCRIPT: scenario,
+      MODEL_NAME: "claude-opus-5-5",
+    },
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  void (async () => {
+    for await (const chunk of proc.stderr as ReadableStream<Uint8Array>) {
+      stderrChunks.push(Buffer.from(chunk).toString("utf8"));
+    }
+  })();
+
+  const deadline = Date.now() + 30_000;
+  let ready = false;
+  while (Date.now() < deadline) {
+    try {
+      const socket = await Bun.connect({
+        hostname: "127.0.0.1",
+        port,
+        socket: { data() {}, open() {}, error() {}, close() {} },
+      });
+      socket.end();
+      ready = true;
+      break;
+    } catch {
+      await Bun.sleep(120);
+    }
+  }
+  if (!ready) {
+    proc.kill();
+    throw new Error(`harness did not accept a connection on port ${port}\n--- stderr ---\n${stderrChunks.join("")}`);
+  }
+
+  const result = await runAgainstUrl(`ws://127.0.0.1:${port}/`, options);
+  return {
+    ...result,
+    stderr: stderrChunks.join(""),
+    cleanup: async () => {
+      proc.kill();
+      await result.cleanup();
+    },
   };
 }

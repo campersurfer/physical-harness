@@ -38,7 +38,7 @@ test(
         expect(Number.isSafeInteger(usage.input_tokens)).toBe(true);
         expect(Number.isSafeInteger(usage.output_tokens)).toBe(true);
       }
-      expect(result.logs.some((line) => line.includes("tools=ple_exec,ple_read_file,ple_write_file,ple_mcp"))).toBe(true);
+      expect(result.logs.some((line) => line.includes("tools=ple_exec,ple_read_file,ple_write_file,ple_check_deliverables,ple_mcp"))).toBe(true);
     } finally {
       await result.cleanup();
     }
@@ -53,6 +53,26 @@ test(
     try {
       expect(result.doneReceived).toBe(true);
       expect(result.errorFrames).toEqual([]);
+    } finally {
+      await result.cleanup();
+    }
+  },
+  180_000,
+);
+
+test(
+  "flags a malformed and a missing deliverable before finishing",
+  async () => {
+    const result = await runScenario({ scenario: "deliverables" });
+    try {
+      expect(result.errorFrames).toEqual([]);
+      expect(result.doneReceived).toBe(true);
+      const verdict = await readFile(join(result.workdir, "results", "verdict.txt"), "utf8");
+      expect(verdict).toContain("problem(s) to fix");
+      expect(verdict).toContain("MISSING");
+      expect(verdict).toContain("results/missing.csv");
+      expect(verdict).toContain("does not parse as JSON");
+      expect(verdict).not.toContain("all deliverables look present");
     } finally {
       await result.cleanup();
     }

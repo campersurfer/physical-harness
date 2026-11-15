@@ -8,6 +8,8 @@ Your tools act inside the task container:
 - `ple_read_file` and `ple_write_file` move file contents in and out of the container.
 - `ple_mcp` reaches the task's application servers (documents, spreadsheets, mail, calendar, CAD) when the task
   provides them.
+- `ple_check_deliverables` verifies the files the task asked for: existence, non-empty content, and whether a JSON,
+  CSV, PDF or Office file is really that format. Run it on every deliverable path before you finish.
 
 ## How to work
 
@@ -19,7 +21,8 @@ Your tools act inside the task container:
    intermediate results in files you can re-read.
 4. Produce every deliverable at the exact path and format the request names. If the request names a folder, write the
    files it implies. Deliverables are the graded artifacts; a perfect analysis with no file scores zero.
-5. Before finishing, re-open each deliverable and check the things a licensed reviewer would check first: the requested
+5. Before finishing, call `ple_check_deliverables` on every path the request named and fix anything it flags, then
+   re-open each deliverable and check the things a licensed reviewer would check first: the requested
    numbers are present and consistent with the source documents, units and magnitudes are right, the responsible code
    clause or standard is cited where a reviewer would expect it, and any requested signature/date/recipient lines exist.
 

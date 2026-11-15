@@ -74,6 +74,78 @@ function mcpScript(): MockResponse[] {
   ];
 }
 
+/** Pulls the text of the most recent tool result out of the conversation. */
+function lastToolResultText(messages: unknown[]): string {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const message = messages[index];
+    if (message === null || typeof message !== "object") continue;
+    const record = message as Record<string, unknown>;
+    const role = String(record.role ?? "");
+    if (role !== "toolResult" && role !== "tool") continue;
+    const content = record.content;
+    if (!Array.isArray(content)) return JSON.stringify(record);
+    const parts: string[] = [];
+    for (const block of content) {
+      if (block === null || typeof block !== "object") continue;
+      const entry = block as Record<string, unknown>;
+      if (typeof entry.text === "string") parts.push(entry.text);
+    }
+    return parts.length > 0 ? parts.join("\n") : JSON.stringify(record);
+  }
+  return "(no tool result found)";
+}
+
+/**
+ * Reactive script that exercises ple_check_deliverables against a good file, a
+ * malformed file and a missing path, then writes the verdict out so the test can
+ * read it from the workdir.
+ */
+function deliverableCheckHandler() {
+  return async (context: { messages: unknown[] }): Promise<MockResponse> => {
+    const assistantTurns = context.messages.filter((message) => {
+      if (message === null || typeof message !== "object") return false;
+      return (message as Record<string, unknown>).role === "assistant";
+    }).length;
+    if (assistantTurns === 0) {
+      return {
+        content: [
+          {
+            type: "toolCall",
+            name: "ple_exec",
+            arguments: {
+              command:
+                "mkdir -p results && printf '# Deliverable\\n\\nTotal: 42 kN\\n' > results/good.md && printf '{not json' > results/bad.json && ls -la results",
+            },
+          },
+        ],
+      };
+    }
+    if (assistantTurns === 1) {
+      return {
+        content: [
+          {
+            type: "toolCall",
+            name: "ple_check_deliverables",
+            arguments: { paths: ["results/good.md", "results/bad.json", "results/missing.csv"] },
+          },
+        ],
+      };
+    }
+    if (assistantTurns === 2) {
+      return {
+        content: [
+          {
+            type: "toolCall",
+            name: "ple_write_file",
+            arguments: { path: "results/verdict.txt", content: lastToolResultText(context.messages) },
+          },
+        ],
+      };
+    }
+    return { content: ["Checked the deliverables and recorded the verdict."] };
+  };
+}
+
 function scriptFor(name: string): MockResponse[] {
   switch (name) {
     case "slow":
@@ -88,6 +160,10 @@ function scriptFor(name: string): MockResponse[] {
 export async function createModel(): Promise<{ model: unknown; providerId: string; apiKey: string }> {
   registerMockApi();
   const scenario = process.env.PLE_TEST_SCRIPT ?? "basic";
-  const mock = createMockModel({ responses: scriptFor(scenario) });
+  const mock = createMockModel(
+    scenario === "deliverables"
+      ? { handler: deliverableCheckHandler() as never }
+      : { responses: scriptFor(scenario) },
+  );
   return { model: mock.model, providerId: "mock", apiKey: "test-key" };
 }

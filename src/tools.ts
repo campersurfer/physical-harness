@@ -128,6 +128,113 @@ export function createTools(bridge: EvaluatorBridge, mcpSessions: Map<string, Mc
     },
   };
 
+  const checkDeliverables: CustomTool = {
+    name: "ple_check_deliverables",
+    label: "Check the deliverable contract",
+    description:
+      "Before you finish: verify every deliverable the task asked for exists, is non-empty, and looks like the format it claims to be. Reports one verdict per path; fix anything it flags.",
+    parameters: z.object({
+      paths: z.array(z.string()).describe("Deliverable paths (files or folders) named in the instruction"),
+    }),
+    async execute(_toolCallId, { paths }, _onUpdate, _context, signal) {
+      try {
+        if (signal?.aborted) throw new CancelledError("tool call aborted");
+        if (paths.length === 0) return { content: [{ type: "text", text: "no paths given" }], isError: true };
+
+        // One round trip gathers existence, kind and size for every path.
+        const quoted = paths.map((path) => `'${path.replaceAll("'", `'\\''`)}'`).join(" ");
+        const listing = await bridge.exec(
+          `for p in ${quoted}; do if [ -d "$p" ]; then n=$(find "$p" -type f 2>/dev/null | wc -l); printf 'DIR\\t%s\\t%s\\n' "$p" "$n"; elif [ -f "$p" ]; then printf 'FILE\\t%s\\t%s\\n' "$p" "$(wc -c < "$p" | tr -d ' ')"; else printf 'MISSING\\t%s\\t0\\n' "$p"; fi; done`,
+          60,
+        );
+        if (listing.error) throw new ProtocolError(listing.error);
+
+        const rows = listing.output
+          .split("\n")
+          .map((line) => line.split("\t"))
+          .filter((fields) => fields.length >= 3 && (fields[0] === "FILE" || fields[0] === "DIR" || fields[0] === "MISSING"));
+        if (rows.length === 0) {
+          // A checker that cannot parse its own listing must say so, never report success.
+          return {
+            content: [
+              {
+                type: "text",
+                text: `Could not read the deliverable listing (exit_code=${String(listing.exit_code)}). Output was:\n${listing.output.slice(0, 500)}`,
+              },
+            ],
+            isError: true,
+          };
+        }
+
+        const verdicts: string[] = [];
+        let problems = 0;
+        for (const [kind, path, rawSize] of rows) {
+          const size = Number(rawSize ?? "0");
+          if (kind === "MISSING") {
+            problems += 1;
+            verdicts.push(`MISSING  ${path} — the task asked for this; create it`);
+            continue;
+          }
+          if (kind === "DIR") {
+            const isEmpty = size === 0;
+            if (isEmpty) problems += 1;
+            verdicts.push(`${isEmpty ? "EMPTY   " : "ok      "} ${path} — directory with ${size} file(s)`);
+            continue;
+          }
+          const extension = (path.split(".").pop() ?? "").toLowerCase();
+          const head = await bridge.readFile(path).catch(() => null);
+          const bytes = head?.bytes ?? new Uint8Array();
+          const text = Buffer.from(bytes.subarray(0, 4096)).toString("utf8");
+          const detail: string[] = [];
+          if (size === 0) {
+            problems += 1;
+            detail.push("empty file");
+          }
+          if (extension === "json") {
+            try {
+              JSON.parse(Buffer.from(bytes).toString("utf8"));
+            } catch {
+              problems += 1;
+              detail.push("does not parse as JSON");
+            }
+          } else if (extension === "csv") {
+            const lines = Buffer.from(bytes).toString("utf8").split(/\r?\n/).filter((row) => row.trim().length > 0);
+            if (lines.length < 2) {
+              problems += 1;
+              detail.push("fewer than two rows");
+            } else {
+              const expected = lines[0].split(",").length;
+              const ragged = lines.filter((row) => row.split(",").length !== expected).length;
+              if (ragged > 0) detail.push(`${ragged} row(s) with a different column count`);
+            }
+          } else if (extension === "pdf") {
+            if (!text.startsWith("%PDF")) {
+              problems += 1;
+              detail.push("does not start with %PDF");
+            }
+          } else if (extension === "docx" || extension === "xlsx" || extension === "pptx") {
+            if (!(bytes[0] === 0x50 && bytes[1] === 0x4b)) {
+              problems += 1;
+              detail.push(`not a zip container, so not a real .${extension}`);
+            }
+          } else if (text.trim().length === 0) {
+            problems += 1;
+            detail.push("no readable text");
+          }
+          const preview = text.replaceAll("\n", " ").slice(0, 120);
+          verdicts.push(
+            `${detail.length > 0 ? "FAIL    " : "ok      "} ${path} — ${size} bytes${detail.length > 0 ? ` | ${detail.join("; ")}` : ""}\n          first bytes: ${preview}`,
+          );
+        }
+        const header = problems === 0 ? "all deliverables look present" : `${problems} problem(s) to fix`;
+        return { content: [{ type: "text", text: `${header}\n${verdicts.join("\n")}` }] };
+      } catch (error) {
+        const failure = describeFailure(error);
+        return { content: [{ type: "text", text: failure.text }], isError: failure.isError };
+      }
+    },
+  };
+
   const mcp: CustomTool = {
     name: "ple_mcp",
     label: "Call a task MCP application",
@@ -172,5 +279,5 @@ export function createTools(bridge: EvaluatorBridge, mcpSessions: Map<string, Mc
     },
   };
 
-  return [exec, readFile, writeFile, mcp];
+  return [exec, readFile, writeFile, checkDeliverables, mcp];
 }
