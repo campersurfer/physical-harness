@@ -51,6 +51,10 @@ The `checks-judge` verdict also shows the grader's own scoring rule in the wild:
 `paper_score.items: 0` when nothing exists at the declared deliverable path. That matches the published rule and is the
 mechanism behind the "no gradable deliverable" failure class.
 
+Usage accounting was verified against the evaluator's own record: with the stub reporting 1,200 input and 40 output
+tokens per call, four model calls produced exactly `n_input_tokens: 4800`, `n_output_tokens: 160` in the trial record —
+one usage frame per settled call, no double counting and no omission on the normal path.
+
 Disk is the practical constraint found here: the rubric task's world image alone is **22.1 GB**, and one run filled a
 150 GB host to 11 GB free before deliberate cleanup (stale serve images plus build cache, which reclaimed ~20 GB). So
 the 29-task dev set should run in batches, with each batch's images pruned on purpose; `artifacts/` accumulates across
