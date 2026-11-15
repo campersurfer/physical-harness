@@ -79,6 +79,17 @@ images are around 17 GB and can take an hour to build the first time; if that bl
 `footing-settlement-verification` and let the two non-rubric tasks prove the pipeline first — the judge path then
 follows on the same host with a warm image cache.
 
+## Full dev-set plan (after the three-task subset)
+
+1. Run the non-rubric tasks first (`checks`, `checks-judge`): they use small images and can share the host.
+2. Then the 12 `rubric` tasks one at a time — each world image is large (the one built here is 22.1 GB), so prune a
+   task's image only after its artifacts are exported, and re-check free space before each batch. `artifacts/`
+   accumulates; only a complete 29-task set produces a committable folder.
+3. Cross-model pass for the writeup: repeat a small subset on `glm-5.2` (or `gpt-oss-120b` / `gemma-4-26b`) — all three
+   are reachable through the same proxy — and record score, tokens and where the two models diverge.
+4. `claude-opus-5-5` is quota-blocked on this account (`429 … quota increase request`); a quota increase for partner
+   models normally needs a paid account, so local runs stay on Gemini/open-weight families.
+
 ## Artifacts provenance
 
 The working copy on the run host currently holds `artifacts/` from the **scripted-model rehearsals** — those folders are
