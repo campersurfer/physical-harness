@@ -41,6 +41,23 @@ uv run python eval/run.py ~/ple-harness           # dev set; needs the gated HF 
 against a real `serve.ts` process, and `test/mock-model.ts` supplies a deterministic model so the protocol path is
 reproducible. The kit and the dev set remain the authority for the container contract and the score.
 
+### Checking the real container without a model key
+
+`test/stub-model.py` is an OpenAI-compatible scripted model for local runs. Started alongside the kit, it lets the
+entry exercise its real provider path (HTTP through the kit's egress proxy) inside the real serve container:
+
+```bash
+python3 test/stub-model.py 4123 &                       # scripted stand-in for a model
+# env file for the kit: MODEL_PROXY_URL=http://127.0.0.1:4123, MODEL_PROXY_KEY=stub-key
+uv run python -m kit up --env-file <env> <entry>        # prints ws://127.0.0.1:PORT/
+bun test/container-check.ts ws://127.0.0.1:PORT/        # drives the running container
+```
+
+The stub reacts to the conversation (it writes `/app/hello.txt` for the kit smoke task, uses app servers when a task
+offers them, and otherwise writes `results/deliverable.md`), so `kit check` can run its stages end to end without a
+model key. It is test scaffolding and never part of the submitted entry; the dev-set run and the competition itself use
+a real sponsored model.
+
 ## Fair play
 
 The harness never reads graders, references, or its own `artifacts/`; it makes no network call except to its declared
