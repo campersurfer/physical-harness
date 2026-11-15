@@ -6,11 +6,21 @@ Last updated 2026-11-14. Evidence only; anything not listed here has not been ve
 
 | Check | Command | Result |
 |---|---|---|
-| Protocol scenarios and bridge invariants | `bun test` | 9 pass / 0 fail (evaluator fixture: basic, cancel, MCP, deliverable check; bridge: request window, chunking, timeout clamp, cancellation, hostile frames) |
+| Protocol scenarios and bridge invariants | `bun test` | 10 pass / 0 fail (evaluator fixture: basic, cancel, MCP, deliverable check, long-context compaction; bridge: request window, chunking, timeout clamp, cancellation, hostile frames) |
 | Entry manifest | `uv run python -m kit validate` | `ok: ple-omp2, google-cloud/claude-opus-5-5; egress none` |
 | Container build (real builder image, linux/amd64) | `uv run python -m kit build` on the x86_64 host | `bundle 264 MiB, built in 48 s` |
 | Real serve container, real provider path | `kit up` + `bun test/container-check.ts ws://…` | both scenarios pass: 4 protocol requests and 4 usage frames answered inside the container, deliverable written, `done` after cancel |
 | `kit check` stages | `uv run python -m kit check --env-file <stub>` | `submission.yaml`, `build`, `model`, `listen` pass; `smoke` and `mcp` are driven end to end by the scripted stand-in model |
+
+Two findings from the long-context scenario (a synthetic conversation driven past a 6,000-token window):
+
+1. **A run can stop right after automatic compaction**, with the rest of the work unfinished — the session settled with
+   only the compaction summary as its last output. The harness now continues such a run (bounded to three
+   continuations, and it also continues when a run ends with the model's last output being a tool call) and logs why.
+   Without this, a long task could silently end with almost nothing written.
+2. **Reported usage can under-count maintenance calls.** In one deterministic run the model saw 10 calls while the
+   harness reported 9 usage frames; compaction summaries are not always delivered as settled assistant messages. The
+   gap is small but non-zero, so any cost figure derived from these frames is a lower bound, and the writeup must say so.
 
 Tool confinement is asserted at session start: the active tool list must equal
 `ple_exec,ple_read_file,ple_write_file,ple_check_deliverables,ple_mcp`, and the run aborts otherwise. Usage frames come
