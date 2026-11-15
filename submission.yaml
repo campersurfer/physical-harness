@@ -2,8 +2,16 @@
 # The evaluator supplies MODEL_BASE_URL / MODEL_API_KEY; no key lives in this repository.
 name: ple-omp2
 model_api: google-cloud/claude-opus-5-5
+# The builder image (debian:bookworm + Node/uv/curl) has no `unzip`, which bun.sh/install requires;
+# the release archive is unpacked with python3 and only the binary is kept under /opt/harness.
+# The `-baseline` build is used because it runs on x64 CPUs without AVX2: local Docker here is
+# Rosetta-emulated and the evaluation host is unknown, and baseline runs on both.
 install: >-
-  curl -fsSL https://bun.sh/install | BUN_INSTALL=/opt/harness/bun bash -s -- bun-v1.4.4
+  curl -fsSL -o /tmp/bun.zip https://github.com/oven-sh/bun/releases/download/bun-v1.4.4/bun-linux-x64-baseline.zip
+  && python3 -c "import zipfile; zipfile.ZipFile('/tmp/bun.zip').extractall('/tmp/bunx')"
+  && mkdir -p /opt/harness/bun/bin
+  && cp /tmp/bunx/bun-linux-x64-baseline/bun /opt/harness/bun/bin/bun
+  && chmod 0755 /opt/harness/bun/bin/bun
   && cd {src} && /opt/harness/bun/bin/bun install --frozen-lockfile
 serve: /opt/harness/bun/bin/bun {src}/serve.ts
 env:
