@@ -1,0 +1,10 @@
+# PLE entry: OMP2-based harness speaking competition protocol v1.
+# The evaluator supplies MODEL_BASE_URL / MODEL_API_KEY; no key lives in this repository.
+name: ple-omp2
+model_api: google-cloud/claude-opus-5-5
+install: >-
+  curl -fsSL https://bun.sh/install | BUN_INSTALL=/opt/harness/bun bash -s -- bun-v1.4.4
+  && cd {src} && /opt/harness/bun/bin/bun install --frozen-lockfile
+serve: /opt/harness/bun/bin/bun {src}/serve.ts
+env:
+  PLE_LOG_LEVEL: "info"
