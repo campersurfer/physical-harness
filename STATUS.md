@@ -66,10 +66,10 @@ One task per grading type, chosen to exercise three different graders without th
 
 ```bash
 # local.env (outside this repository): MODEL_PROXY_URL + MODEL_PROXY_KEY, JUDGE_* if separate, HF_TOKEN
-uv run python eval/run.py ~/ple-harness --env-file local.env \
+uv run python eval/run.py this repository --env-file local.env \
   --tasks wind-diaphragm-shear,footing-settlement-verification,lv-cable-sizing --trials 1
-python3 ~/cursuspublicus/tools/ple-receipts.py --run runs/<run> --dev-set eval/dev_set.yaml --markdown summary.md
-python3 ~/cursuspublicus/tools/ple-figures.py --receipts runs/<run>/receipts.json --out-dir figures/
+python3 tools/ple-receipts.py --run runs/<run> --dev-set eval/dev_set.yaml --markdown summary.md
+python3 tools/ple-figures.py --receipts runs/<run>/receipts.json --out-dir figures/
 ```
 
 `wind-diaphragm-shear` is `checks`, `footing-settlement-verification` is `rubric`, `lv-cable-sizing` is `checks-judge`.

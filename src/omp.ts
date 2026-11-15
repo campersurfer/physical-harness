@@ -47,7 +47,7 @@ const MODEL_LIMITS: Record<string, ModelLimits> = {
     contextWindow: 1_048_576,
     maxTokens: 65_536,
     thinking: { mode: "effort", efforts: ["low", "medium", "high"], defaultLevel: "high" },
-    source: "~/ple/docs/models.md (documented)",
+    source: "docs/models.md in the competition repository (documented)",
   },
   "claude-opus-5-5": {
     contextWindow: 200_000,
@@ -59,13 +59,13 @@ const MODEL_LIMITS: Record<string, ModelLimits> = {
     contextWindow: 200_000,
     maxTokens: 32_000,
     thinking: { mode: "effort", efforts: ["low", "medium", "high", "max"], defaultLevel: "max" },
-    source: "conservative: not documented in ~/ple/docs/models.md",
+    source: "conservative: not documented in docs/models.md in the competition repository",
   },
   "gemini-3.8-flash": {
     contextWindow: 1_048_576,
     maxTokens: 65_536,
     thinking: { mode: "effort", efforts: ["low", "medium", "high"], defaultLevel: "high" },
-    source: "conservative: not documented in ~/ple/docs/models.md",
+    source: "conservative: not documented in docs/models.md in the competition repository",
   },
 };
 

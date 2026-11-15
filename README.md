@@ -31,10 +31,10 @@ terminal path, including evaluator cancellation, because a socket closed without
 ```bash
 bun install
 bun test                     # three protocol scenarios against a local evaluator fixture
-uv run python -m kit validate ~/ple-harness
-uv run python -m kit build ~/ple-harness
-uv run python -m kit check ~/ple-harness          # needs Docker and model settings
-uv run python eval/run.py ~/ple-harness           # dev set; needs the gated HF dataset + a model
+uv run python -m kit validate this repository
+uv run python -m kit build this repository
+uv run python -m kit check this repository          # needs Docker and model settings
+uv run python eval/run.py this repository           # dev set; needs the gated HF dataset + a model
 ```
 
 `bun test` needs no Docker, no model key, and no dataset: `test/fixture.ts` plays the evaluator over a real WebSocket
