@@ -35,6 +35,27 @@ run its **real provider path** — HTTP through the kit's egress proxy, in the r
 stub supplies the assistant turns. `test/container-check.ts` then answers the harness's protocol requests and asserts
 the outcome. The dev-set run and Stage 2 use a real sponsored model; nothing in the entry depends on the stub.
 
+## Pipeline rehearsals on real dev tasks (scripted model, no model budget)
+
+Real dev tasks were run through Harbor on the x86_64 host with `test/stub-model.py` standing in for the gateway. This
+proves the pipeline; the rewards are 0 because the scripted model writes no real deliverable, and none of these
+artifacts may be committed.
+
+| Task | Grading | Outcome |
+|---|---|---|
+| `wind-diaphragm-shear` | `checks` | serve `completed`, 4 protocol requests, verifier reward 0.0 |
+| `footing-settlement-verification` | `rubric` (LLM judge) | serve `completed`, 6 requests, judge produced `grade.json`, reward 0.0 |
+| `lv-cable-sizing` | `checks-judge` | serve `completed`, 4 requests, `grade.json` with `exec_status: ERR_NO_SUBMISSION`, reward 0.0 |
+
+The `checks-judge` verdict also shows the grader's own scoring rule in the wild: `0.4 p + 0.6 [h=1] O'`, with
+`paper_score.items: 0` when nothing exists at the declared deliverable path. That matches the published rule and is the
+mechanism behind the "no gradable deliverable" failure class.
+
+Disk is the practical constraint found here: the rubric task's world image alone is **22.1 GB**, and one run filled a
+150 GB host to 11 GB free before deliberate cleanup (stale serve images plus build cache, which reclaimed ~20 GB). So
+the 29-task dev set should run in batches, with each batch's images pruned on purpose; `artifacts/` accumulates across
+batches, and the export refuses to produce a committable folder until every task has a result.
+
 ## First bounded dev run
 
 One task per grading type, chosen to exercise three different graders without the multi-gigabyte world images:
