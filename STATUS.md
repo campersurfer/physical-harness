@@ -9,7 +9,7 @@ Last updated 2026-11-14. Evidence only; anything not listed here has not been ve
 | Protocol scenarios and bridge invariants | `bun test` | 10 pass / 0 fail (evaluator fixture: basic, cancel, MCP, deliverable check, long-context compaction; bridge: request window, chunking, timeout clamp, cancellation, hostile frames) |
 | Entry manifest | `uv run python -m kit validate` | `ok: ple-omp2, google-cloud/claude-opus-5-5; egress none` |
 | Container build (real builder image, linux/amd64) | `uv run python -m kit build` on the x86_64 host | `bundle 264 MiB, built in 48 s` |
-| Real serve container, real provider path | `kit up` + `bun test/container-check.ts ws://…` | both scenarios pass: 4 protocol requests and 4 usage frames answered inside the container, deliverable written, `done` after cancel |
+| Real serve container, real provider path | `kit up` + `bun test/container-check.ts ws://…` | both scenarios pass: 4 protocol requests and 4 usage frames answered inside the container, deliverable written, `done` after cancel — re-run after the mid-work-continuation change and still passing |
 | `kit check` stages | `uv run python -m kit check --env-file <stub>` | `submission.yaml`, `build`, `model`, `listen` pass; `smoke` and `mcp` are driven end to end by the scripted stand-in model |
 
 Two findings from the long-context scenario (a synthetic conversation driven past a 6,000-token window):
