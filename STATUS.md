@@ -6,14 +6,24 @@ Last updated 2026-11-14. Evidence only; anything not listed here has not been ve
 
 | Check | Command | Result |
 |---|---|---|
-| Protocol scenarios (exec/read/write, cancellation, task MCP) | `bun test` | 8 pass / 0 fail: 3 evaluator-fixture scenarios + 5 bridge invariants |
-| Entry manifest | `uv run python -m kit validate ~/ple-harness` | `ok: ple-omp2, google-cloud/claude-opus-5-5; egress none` |
-| Container build (real builder image, linux/amd64) | `uv run python -m kit build ~/ple-harness` (on the x86_64 host) | `bundle 264 MiB, built in 47 s; serve image plebench-serve:e5337a34d27404eb` |
-| `submission.yaml` stage of `kit check` | `uv run python -m kit check --no-smoke` | `[PASS] submission.yaml` |
+| Protocol scenarios and bridge invariants | `bun test` | 9 pass / 0 fail (evaluator fixture: basic, cancel, MCP, deliverable check; bridge: request window, chunking, timeout clamp, cancellation, hostile frames) |
+| Entry manifest | `uv run python -m kit validate` | `ok: ple-omp2, google-cloud/claude-opus-5-5; egress none` |
+| Container build (real builder image, linux/amd64) | `uv run python -m kit build` on the x86_64 host | `bundle 264 MiB, built in 48 s` |
+| Real serve container, real provider path | `kit up` + `bun test/container-check.ts ws://…` | both scenarios pass: 4 protocol requests and 4 usage frames answered inside the container, deliverable written, `done` after cancel |
+| `kit check` stages | `uv run python -m kit check --env-file <stub>` | `submission.yaml`, `build`, `model`, `listen` pass; `smoke` and `mcp` are driven end to end by the scripted stand-in model |
 
 Tool confinement is asserted at session start: the active tool list must equal
-`ple_exec,ple_read_file,ple_write_file,ple_mcp`, and the run aborts otherwise. Usage frames come from settled
-assistant messages only, so a call is counted once.
+`ple_exec,ple_read_file,ple_write_file,ple_check_deliverables,ple_mcp`, and the run aborts otherwise. Usage frames come
+from settled assistant messages only, so a call is counted once. A failed turn is retried at most three more times
+while real task time remains, and bad writes are capped: a `.json` deliverable that does not parse, an empty file, or a
+file whose magic bytes contradict its extension is reported by `ple_check_deliverables` before the run finishes.
+
+## How the container path was verified without a model key
+
+`test/stub-model.py` is a scripted OpenAI-compatible server. Pointing the kit's `MODEL_PROXY_URL` at it makes the entry
+run its **real provider path** — HTTP through the kit's egress proxy, in the real read-only serve container — while the
+stub supplies the assistant turns. `test/container-check.ts` then answers the harness's protocol requests and asserts
+the outcome. The dev-set run and Stage 2 use a real sponsored model; nothing in the entry depends on the stub.
 
 ## Blocked on inputs
 
