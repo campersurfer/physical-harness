@@ -79,6 +79,18 @@ images are around 17 GB and can take an hour to build the first time; if that bl
 `footing-settlement-verification` and let the two non-rubric tasks prove the pipeline first — the judge path then
 follows on the same host with a warm image cache.
 
+## Submission checklist (Kaggle Writeup route)
+
+1. `uv run python eval/run.py <entry> --env-file local.env` until every one of the 29 dev tasks has a result, then
+   `uv run python -m kit artifacts <entry>` and commit `artifacts/` together with the harness.
+2. `uv run python -m kit check <entry>` must print `ready to submit`.
+3. Push the commit; record the 40-character SHA (`git rev-parse HEAD`).
+4. On Kaggle: **Writeups → New Writeup**, attach the repository under *Project Links*, put the SHA at the top, and
+   cover the five rubric criteria with the three required figures (architecture diagram, score-vs-cost plot,
+   dev-set failure breakdown). Drafts are not judged; the writeup must be submitted.
+5. Stage 2 runs the declared `model_api` on 56 hidden tasks; the writeup must state which model and judge produced
+   the committed artifacts when they were generated locally.
+
 ## Blocked on inputs
 
 | Stage | Needs |
