@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 560" width="960" height="560" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="13">
+  <rect width="960" height="560" fill="#ffffff"/>
+  <text x="30" y="34" font-size="17" font-weight="600">ple-omp2 — one OMP2 agent session behind competition protocol v1</text>
+  <text x="30" y="56" font-size="12" fill="#555">Each task runs in its own container pair. The harness never sees graders, references or artifacts.</text>
+
+  <!-- Evaluator -->
+  <rect x="30" y="90" width="250" height="150" rx="8" fill="#f4f6f8" stroke="#c3ccd6"/>
+  <text x="50" y="116" font-weight="600">Evaluator (competition)</text>
+  <text x="50" y="140" fill="#333">sends the task, executes requests</text>
+  <text x="50" y="158" fill="#333">against the task container, grades</text>
+  <text x="50" y="176" fill="#333">deliverables outside the agent</text>
+  <text x="50" y="202" fill="#555" font-size="12">task · result · cancel</text>
+  <text x="50" y="220" fill="#555" font-size="12">log · usage · done</text>
+
+  <!-- serve container -->
+  <rect x="330" y="90" width="330" height="380" rx="8" fill="#eef7f2" stroke="#9dc3af"/>
+  <text x="350" y="116" font-weight="600">Harness container (2 CPU · 4 GB · read-only bundle)</text>
+
+  <rect x="352" y="132" width="286" height="52" rx="6" fill="#ffffff" stroke="#9dc3af"/>
+  <text x="366" y="152" font-size="12" font-weight="600">src/protocol.ts</text>
+  <text x="366" y="170" font-size="11" fill="#444">request window (8) · base64 file IO · cancel, usage, done</text>
+
+  <rect x="352" y="196" width="286" height="70" rx="6" fill="#ffffff" stroke="#9dc3af"/>
+  <text x="366" y="216" font-size="12" font-weight="600">OMP2 session (src/omp.ts)</text>
+  <text x="366" y="234" font-size="11" fill="#444">provider registered from MODEL_BASE_URL; limits pinned</text>
+  <text x="366" y="250" font-size="11" fill="#444">restrictToolNames · no MCP/LSP discovery · system prompt</text>
+
+  <rect x="352" y="278" width="286" height="112" rx="6" fill="#ffffff" stroke="#9dc3af"/>
+  <text x="366" y="298" font-size="12" font-weight="600">Host tools (src/tools.ts)</text>
+  <text x="366" y="316" font-size="11" fill="#444">ple_exec · ple_read_file · ple_write_file</text>
+  <text x="366" y="332" font-size="11" fill="#444">ple_check_deliverables (paths, formats, magic bytes)</text>
+  <text x="366" y="348" font-size="11" fill="#444">ple_mcp (Streamable HTTP over the protocol)</text>
+  <text x="366" y="372" font-size="11" fill="#666">every tool acts in the task container, never locally</text>
+
+  <rect x="352" y="402" width="286" height="52" rx="6" fill="#ffffff" stroke="#9dc3af"/>
+  <text x="366" y="422" font-size="12" font-weight="600">src/server.ts</text>
+  <text x="366" y="440" font-size="11" fill="#444">deadline · time checkpoints (75/90%) · continuation · one done</text>
+
+  <!-- task container -->
+  <rect x="700" y="90" width="230" height="380" rx="8" fill="#f7f3ea" stroke="#d8c79b"/>
+  <text x="720" y="116" font-weight="600">Task container</text>
+  <text x="720" y="140" fill="#333">project corpus (61 files avg)</text>
+  <text x="720" y="158" fill="#333">no network access</text>
+  <text x="720" y="184" fill="#555" font-size="12">task app servers (MCP)</text>
+  <text x="720" y="202" fill="#555" font-size="12">documents · sheets · mail · CAD</text>
+  <text x="720" y="232" fill="#555" font-size="12">deliverables written here</text>
+  <text x="720" y="258" fill="#555" font-size="12">graded after `done`</text>
+
+  <!-- model -->
+  <rect x="330" y="500" width="330" height="44" rx="8" fill="#f2eef8" stroke="#b6a4d6"/>
+  <text x="350" y="528" font-size="12">Model gateway (egress proxy → sponsored model only)</text>
+
+  <!-- arrows -->
+  <defs>
+    <marker id="a" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#5a6b7a"/></marker>
+    <marker id="b" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#8a7a4a"/></marker>
+  </defs>
+  <line x1="280" y1="150" x2="330" y2="150" stroke="#5a6b7a" stroke-width="1.6" marker-end="url(#a)"/>
+  <text x="284" y="142" font-size="11" fill="#5a6b7a">task</text>
+  <line x1="330" y1="176" x2="280" y2="176" stroke="#5a6b7a" stroke-width="1.6" marker-end="url(#a)"/>
+  <text x="284" y="192" font-size="11" fill="#5a6b7a">requests</text>
+  <line x1="636" y1="160" x2="700" y2="160" stroke="#8a7a4a" stroke-width="1.6" marker-end="url(#b)"/>
+  <text x="640" y="152" font-size="11" fill="#8a7a4a">exec / files / http</text>
+  <line x1="700" y1="200" x2="636" y2="200" stroke="#8a7a4a" stroke-width="1.6" marker-end="url(#b)"/>
+  <text x="644" y="216" font-size="11" fill="#8a7a4a">results</text>
+  <line x1="495" y1="470" x2="495" y2="500" stroke="#6b5b8a" stroke-width="1.6" marker-end="url(#a)"/>
+  <text x="502" y="490" font-size="11" fill="#6b5b8a">streamed calls</text>
+  <line x1="330" y1="410" x2="150" y2="240" stroke="#5a6b7a" stroke-width="1.2" stroke-dasharray="5 4" marker-end="url(#a)"/>
+  <text x="120" y="300" font-size="11" fill="#5a6b7a">done + summary</text>
+</svg>
