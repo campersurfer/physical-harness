@@ -25,6 +25,22 @@ run its **real provider path** — HTTP through the kit's egress proxy, in the r
 stub supplies the assistant turns. `test/container-check.ts` then answers the harness's protocol requests and asserts
 the outcome. The dev-set run and Stage 2 use a real sponsored model; nothing in the entry depends on the stub.
 
+## First bounded dev run
+
+One task per grading type, chosen to exercise three different graders without the multi-gigabyte world images:
+
+```bash
+# local.env (outside this repository): MODEL_PROXY_URL + MODEL_PROXY_KEY, JUDGE_* if separate, HF_TOKEN
+uv run python eval/run.py ~/ple-harness --env-file local.env \
+  --tasks wind-diaphragm-shear,footing-settlement-verification,lv-cable-sizing --trials 1
+python3 ~/cursuspublicus/tools/ple-receipts.py --run runs/<run> --dev-set eval/dev_set.yaml --markdown summary.md
+python3 ~/cursuspublicus/tools/ple-figures.py --receipts runs/<run>/receipts.json --out-dir figures/
+```
+
+`wind-diaphragm-shear` is `checks`, `footing-settlement-verification` is `rubric`, `lv-cable-sizing` is `checks-judge`.
+Watch peak memory: the largest dev tasks want 6 CPU and 16.25 GB, which exceeds a 15 GB host, so the first subset is
+deliberately small and the full set follows only after measuring.
+
 ## Blocked on inputs
 
 | Stage | Needs |
