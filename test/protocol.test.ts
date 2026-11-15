@@ -39,6 +39,10 @@ test(
         expect(Number.isSafeInteger(usage.output_tokens)).toBe(true);
       }
       expect(result.logs.some((line) => line.includes("tools=ple_exec,ple_read_file,ple_write_file,ple_check_deliverables,ple_mcp"))).toBe(true);
+      // Every tool call is visible in the run log, with its duration.
+      const toolLines = result.logs.filter((line) => line.startsWith("tool "));
+      expect(toolLines.length).toBeGreaterThanOrEqual(4);
+      expect(toolLines.every((line) => /tool \w+ (ok|failed) in \d+ms/.test(line))).toBe(true);
     } finally {
       await result.cleanup();
     }

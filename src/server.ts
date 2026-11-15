@@ -95,6 +95,9 @@ async function runTask(
   // before doing any work with the compacted context.
   let endedWithToolCall = false;
   let compactedWithoutWork = false;
+  // Tool telemetry: which tools ran, how long they took, and whether they failed.
+  // Arguments are never logged in full — only a short, bounded summary.
+  const toolStarted = new Map<string, { name: string; at: number }>();
   let session: Awaited<ReturnType<typeof createPleSession>> | null = null;
   let unsubscribe: (() => void) | null = null;
 
@@ -179,6 +182,22 @@ async function runTask(
           output: asCount(usageRecord.output),
           cacheRead: asCount(usageRecord.cacheRead),
         });
+        return;
+      }
+      if (event.type === "tool_execution_start") {
+        const id = String(event.toolCallId ?? "");
+        const name = String(event.toolName ?? "tool");
+        toolStarted.set(id, { name, at: Date.now() });
+        return;
+      }
+      if (event.type === "tool_execution_end") {
+        const id = String(event.toolCallId ?? "");
+        const started = toolStarted.get(id);
+        toolStarted.delete(id);
+        const name = started?.name ?? String(event.toolName ?? "tool");
+        const ms = started ? Date.now() - started.at : -1;
+        const failed = event.isError === true;
+        log(`tool ${name} ${failed ? "failed" : "ok"} in ${ms}ms`);
         return;
       }
       if (event.type === "auto_compaction_start") {
