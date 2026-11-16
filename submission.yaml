@@ -1,4 +1,4 @@
-# PLE entry: OMP2-based harness speaking competition protocol v1.
+# PLE entry: TypeScript OMP SDK harness speaking competition protocol v1; not the Rust OMP2 rewrite.
 # The evaluator supplies MODEL_BASE_URL / MODEL_API_KEY; no key lives in this repository.
 name: physical-harness
 model_api: google-cloud/gemini-4-argon

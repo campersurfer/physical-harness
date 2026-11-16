@@ -1,12 +1,12 @@
 # Status
 
-Last updated 2026-11-15. Evidence classes below are separate; fixtures and scripted gateway rehearsals are not competition performance.
+Last updated 2026-11-16. Evidence classes below are separate; fixtures and scripted gateway rehearsals are not competition performance.
 
 ## Source and deterministic checks
 
 - Declared model: `google-cloud/gemini-4-argon`. Claude on the existing Vertex route is quota-blocked; no repeated probes are needed.
-- SDK remains `@oh-my-pi/pi-coding-agent@18.19.0`, Bun 1.4.4.
-- `bun test test/bridge.test.ts test/protocol.test.ts`: **26 pass, 0 fail**, 130 assertions.
+- SDK remains the **TypeScript/Bun** implementation, `@oh-my-pi/pi-coding-agent@18.19.0`, Bun 1.4.4—not the Rust OMP2 rewrite. Native qualification is a separate Cursus candidate, pinned at upstream `2f92f3b5aa2035d21c9f016f9ff6350795e5685a`; its single bounded build produced no executable, so no native migration is claimed here.
+- `bun test test/bridge.test.ts test/protocol.test.ts` on 2026-11-15: **26 pass, 0 fail**, 130 assertions.
 - Cancellation owns the task before asynchronous setup, aborts the active session, clears timers/steering/retry queues and sends one terminal without waiting for a model response. Late callbacks cannot restart work.
 - Cancelling or closing a bridge with 20 requests settles all promises and starts no queued evaluator requests.
 - MCP discovery provides bounded index pages and name/description search. `ple_mcp(action=schema)` returns the selected tool's complete schema; `action=call` preserves application errors.
@@ -60,6 +60,8 @@ occupied the shared host. Its canonical receipt `receipt-c33d949f-2293-41d9-b2dc
 (`BLOCKED`), not a performance comparison. The unchanged-result control was rejected. The audit-off incumbent remains;
 no promotion, serving transfer, repaired-container result or new score gain is claimed. Resume only as a new bounded
 operation once the host is quiet and the remaining allowance has been read back.
+
+On the single 2026-11-16 reconciliation, the existing batch was still active; no paired run was resubmitted and the historical receipt was not reopened. Cursus integrated per-dispatch allowance freshness and a host-wide evaluation lease. A 300-second failure is only a budget-limited screen unless the audit behavior was actually reached; one repeat still cannot promote. Native worker/CLI rehearsals and the rendered Cursus Tern view are not PLE performance or final submission artifacts.
 
 ## Host prerequisites and artifact boundary
 
