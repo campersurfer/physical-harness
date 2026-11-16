@@ -1,0 +1,22 @@
+The Phase 1 foundation design and optimisation package for the Cattail Run Data Campus (`CR-P1` through `CR-P6`) has been completed and packaged in **`/filesystem/dc_structural__foundation_strategy__blind/output/submission.zip`**.
+
+### Deliverables Included in `output/submission.zip`
+
+1. **`foundation_geometry.json`** — Conforming Revit BIM foundation geometry parameter file (per `AV-CR-2604_BIM_parameter_standard.md` Rev. 2) containing project-level parameters (`campus_total_cost_usd = 462087.96`, `frost_depth_in = 42`, `afi_100yr_F_days = 556`) and complete pad- and foundation-level geometry, durability, reinforcement, bearing, settlement, pier, and shear-wall stability parameters for all 6 pads and 36 foundations.
+2. **`ground_improvement_plan.json`** — Conforming ground-improvement programme file specifying `stress_concentration_ratio_ns = 10.0`, `pier_diameter_in = 30`, `rigs_mobilised = 2`, `mobilisation_cost_usd = 80000.0`, `pads_improved = ["CR-P1", "CR-P2", "CR-P4", "CR-P6"]`, rig assignments (`RIG-1: ["CR-P1", "CR-P2"]`, `RIG-2: ["CR-P4", "CR-P6"]`), verification modulus test counts (`1` per improved pad), and per-pad stiffness moduli (`165.0`, `140.0`, `195.0`, `155.0` pci), maximum treatment depths (`9`, `10`, `8`, `11` ft), and total pier linear footage (`785.0`, `822.0`, `424.0`, `812.0` LF).
+3. **`foundation_schedule.xlsx`** — Populated on `AV-CR-2604_foundation_schedule_TEMPLATE.xlsx` (`FOUNDATION SCHEDULE` tab) for all 36 foundations in exact agreement with `foundation_geometry.json`.
+4. **`foundation_feasibility_matrix.md`** — Pad-by-pad (`CR-P1` … `CR-P6`) and unit-by-unit (`F1` … `F5`, `W1`) feasibility and cost-optimisation matrix detailing demands, three-method bearing capacity checks, layered elastic and two-layer aggregate-pier settlement checks, adjacent-bay angular distortion checks ($\le 1/500 = 0.0020$), shear-wall sliding/overturning/uplift stability checks, governing constraints, and full cost comparisons of both `SPREAD` and `IMPROVED_SPREAD` alternatives.
+5. **`constraint_register.xlsx`** — Populated on `constraint_register_template.xlsx` (`CONSTRAINT REGISTER` tab) with 74 structured rows registering every applied requirement across all governing documents, clauses, tables, and equations first, followed by the cancelled, superseded, and inapplicable documents explicitly marked `SET ASIDE`.
+6. **`design_basis.md`** — Opens with the required fenced ` ```json ` summary block followed by the engineering narrative covering governing vs. rejected criteria, three-method bearing capacity and layered elastic settlement methodology, tolerable movement limits ($\le 1.0\text{ in}$ total settlement, $\le 1/500$ angular distortion vs. rejected `FHWA GEC 6` Section 5.3.1 bridge limits), rammed aggregate pier parameters, document conflict resolutions, and the campus-level integer-programming mobilisation rationale.
+
+### Summary of Key Results
+
+| Pad ID | Building | Occupancy (`FS`) | Concrete (`f'c`, `max w/cm`, Exposure) | Selected Strategy | Bearing Depth | Gov. Constraint | Spread-Only Cost (USD) | Improved Cost excl. Mob (USD) | Selected Pad Cost excl. Mob (USD) |
+|---|---|---|---:|---|---:|---|---:|---:|---:|
+| `CR-P1` | Data Hall 1 | Light Industrial, Public (`3.5`) | `4000 psi`, `0.50`, `F1/S1/W1/C1` | `IMPROVED_SPREAD` | `42 in` | `BEARING` | $146,299.13 | $89,676.22 | $89,676.22 |
+| `CR-P2` | Data Hall 2 | Light Industrial, Public (`3.5`) | `4500 psi`, `0.45`, `F1/S2/W1/C1` | `IMPROVED_SPREAD` | `42 in` | `SETTLEMENT` | $153,038.32 | $96,301.64 | $96,301.64 |
+| `CR-P3` | Electrical Yard Building | Light Industrial, Public (`3.5`) | `4000 psi`, `0.50`, `F1/S0/W1/C1` | `SPREAD` | `42 in` | `SETTLEMENT` | $35,044.73 | $58,271.48 | $35,044.73 |
+| `CR-P4` | Admin & Operations Bldg | Apartments, Office (`3.0`) | `4000 psi`, `0.50`, `F1/S1/W1/C1` | `IMPROVED_SPREAD` | `42 in` | `BEARING` | $61,998.21 | $48,215.98 | $48,215.98 |
+| `CR-P5` | Logistics & Spares Warehouse | Warehouse (`2.5`) | `5000 psi`, `0.40`, `F3/S0/W1/C1` | `SPREAD` | `42 in` | `BEARING` | $18,984.37 | $37,460.47 | $18,984.37 |
+| `CR-P6` | Data Hall 3 | Light Industrial, Public (`3.5`) | `4500 psi`, `0.45`, `F1/S2/W1/C1` | `IMPROVED_SPREAD` | `42 in` | `BEARING` | $125,183.96 | $93,865.02 | $93,865.02 |
+| **Campus** | **2 Rigs (`RIG-1`, `RIG-2`)** | **4 Pads Improved** | | | | | | **Rig Mob: $80,000.00** | **$462,087.96** |
