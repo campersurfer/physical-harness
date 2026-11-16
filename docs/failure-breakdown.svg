@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 128" width="720" height="128" font-family="system-ui, -apple-system, Segoe UI, sans-serif" font-size="14">
+<text x="16" y="22" font-size="16" font-weight="600">Dev-set outcome classes — 13 tasks</text>
+<text x="16" y="58">partial</text>
+<rect x="200" y="44" width="500" height="18" rx="3" fill="#c9a227" opacity="0.9"/>
+<text x="708" y="58" fill="#333">10</text>
+<text x="16" y="92">strong</text>
+<rect x="200" y="78" width="150" height="18" rx="3" fill="#1b7f5a" opacity="0.9"/>
+<text x="358" y="92" fill="#333">3</text>
+</svg>

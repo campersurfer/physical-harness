@@ -5,22 +5,31 @@ Figures: `docs/architecture.svg`, `docs/failure-breakdown.svg`, `docs/efficiency
 
 ## Headline
 
-**First real dev-set results (8 tasks, one model, no harness tuning): mean 0.475**, bimodal — 0.984 and 0.823 where the
-hard-constraint gate holds, 0.31–0.38 where it does not. The gate, not the objective, is where the points are:
-`wind-diaphragm-shear` met 91% of its constraints and reached 81% of the certified cost bound, yet scored 0.311 because
-`feasible_all=False` caps the affected items at `0.4p` and deletes their objective credit. That is the same failure the
-paper reports for frontier baselines (91% of constraints met, 41.3% of items all-hard-clean), reproduced here.
+**13 of 29 dev tasks measured: mean 0.452**, bimodal — 0.984, 0.823 and 0.765 where the hard-constraint gate holds,
+0.286-0.377 where it fails. `s = 0.4p + 0.6·G·O′` makes the gate the dominant term: one infeasible item loses the top
+60% of that item *and* its objective credit. `wind-diaphragm-shear` is the proof — 91% of constraints met, objective at
+0.81 of the certified cost bound, score 0.311 because `feasible_all=False`. This is the failure the paper reports for
+frontier baselines (91% of constraints met, 41.3% of items all-hard-clean), reproduced here on our own runs.
 
 | Task | Discipline | Grading | Score |
 |---|---|---|---:|
 | `heat-rejection-life-cycle-cost` | Mechanical | checks | **0.984** |
 | `lv-cable-sizing` | Electrical | checks-judge | **0.823** |
+| `foundation-strategy` | Civil | checks-judge | **0.765** |
 | `mv-conveyance-study` | Electrical | checks | 0.377 |
-| `roof-deck-design` | Structural | checks | 0.357 |
+| `frame-extension-method` | Civil | checks | 0.369 |
+| `data-hall-device-takeoff` | Electrical | checks | 0.365 |
+| `roof-deck-design` | Structural | checks | 0.357 / 0.286 (two versions) |
+| `eor-review-corrections` | Structural | checks-judge | 0.347 |
 | `division-26-specifications` | Electrical | checks | 0.321 |
 | `seismic-diaphragm-shear` | Structural | checks | 0.318 |
 | `wind-diaphragm-shear` | Structural | checks | 0.311 |
 | `footing-settlement-verification` | Civil | rubric | 0.306 |
+| `cooling-water-flush-plan` | Mechanical | checks | 0.303 |
+
+Both `checks-judge` tasks with a judge call present scored high (0.823, 0.765); the two lowest are `checks`-only.
+A hypothesis that fits the evidence but is **not** yet tested: when a judge reads the deliverable and the closing
+message, careful narrative work pays; when only a programmatic checker reads the files, only the numbers matter.
 
 A PLE harness is not a prompt; it is a **contract**. The competition scores each task item as
 `s = 0.4·p + 0.6·G·O′`, where one broken hard constraint (`G = 0`) caps the item at 0.4 and deletes every point of
@@ -74,13 +83,12 @@ it the way it does.
 
 ## Efficiency (figure 2)
 
-Score against tokens per task, with the measured mean marked, from the same receipts file that produced the failure
-breakdown. Across the eight tasks: **7.86M input / 1.77M output tokens** — roughly 1.2M input tokens per task, because
-the corpus is large and the agent re-reads what it needs. The spread is informative: the two high-scoring tasks were not
-the cheapest (`heat-rejection-life-cycle-cost` 1.0M in, `lv-cable-sizing` 0.37M in) but the *longest* run by requests
-(`division-26-specifications`, 158 requests, 2.74M in) scored 0.321 — effort spent, gate still failed. Cost is a
-lower bound here: usage frames come from settled assistant messages, and compaction summaries are not always among
-them.
+Score against tokens per task with the measured mean marked, from the same receipts that produced the failure
+breakdown: **17.4M input / 3.5M output tokens** and **17.1 h of agent time** across 13 tasks — about 1.3M input tokens
+each, because the corpus is large and the agent re-reads what it needs. Effort is not the binding constraint: the
+longest run by requests (`division-26-specifications`, 158 requests, 2.74M in) scored 0.321, while
+`heat-rejection-life-cycle-cost` reached 0.984 on 1.0M in. Cost is a lower bound: usage frames come from settled
+assistant messages, and compaction summaries are not always among them.
 
 ## Cross-model generalizability
 
@@ -92,6 +100,11 @@ judge used, as the competition allows.
 
 ## What did not work
 
+- **A requirement audit.** Hypothesis: making the agent write an explicit requirement-to-deliverable audit before
+  finishing would raise the all-or-nothing gate. Paired test on the same three tasks, same model: 0.329 → 0.305 (mean),
+  input tokens up from 0.45M to 2.20M on one task. No gain inside the benchmark's own run-to-run noise, so the audit is
+  now opt-in behind `PLE_REQUIREMENT_AUDIT=on`, and it is kept only for a future controlled test on the
+  `rubric`/`checks-judge` families, where the closing message is actually read.
 - A first version emitted usage from the `message_update` terminal event; it never fires for this provider path, so the
   frames were silently absent. The evaluator-record cross-check is what caught it.
 - Verifying the container path with a scripted stand-in model proved the plumbing without spending credits, but it also
