@@ -1,4 +1,4 @@
-# ple-omp2
+# physical-harness
 
 A [Physical-Engineering's Last Exam](https://ple-bench.com) competition harness built on
 [OMP2](https://omp.sh/docs/sdk). The harness is a WebSocket server that speaks competition protocol v1
@@ -63,3 +63,8 @@ a real sponsored model.
 The harness never reads graders, references, or its own `artifacts/`; it makes no network call except to its declared
 model gateway; it contains no task-identity branching. Learned improvements belong in this repository's prompts, tools,
 and checks as general behavior, never as per-task answers.
+
+## License
+
+Apache-2.0 — the same license as the benchmark repository, and one of the two the competition accepts (Apache-2.0 or
+MIT).

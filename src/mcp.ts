@@ -121,7 +121,7 @@ export async function openMcpSessions(bridge: EvaluatorBridge): Promise<Map<stri
       params: {
         protocolVersion: session.protocolVersion,
         capabilities: {},
-        clientInfo: { name: "ple-omp2-harness", version: "0.1.0" },
+        clientInfo: { name: "physical-harness-harness", version: "0.1.0" },
       },
     });
     const result = initialized.result;

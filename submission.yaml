@@ -1,6 +1,6 @@
 # PLE entry: OMP2-based harness speaking competition protocol v1.
 # The evaluator supplies MODEL_BASE_URL / MODEL_API_KEY; no key lives in this repository.
-name: ple-omp2
+name: physical-harness
 model_api: google-cloud/gemini-4-argon
 # The builder image (debian:bookworm + Node/uv/curl) has no `unzip`, which bun.sh/install requires;
 # the release archive is unpacked with python3 and only the binary is kept under /opt/harness.

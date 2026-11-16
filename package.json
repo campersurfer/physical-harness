@@ -1,5 +1,5 @@
 {
-  "name": "ple-omp2",
+  "name": "physical-harness",
   "private": true,
   "type": "module",
   "dependencies": {

@@ -395,7 +395,7 @@ export function startServer(): { port: number; stop: () => void } {
     hostname: "0.0.0.0",
     fetch(request, bunServer) {
       if (bunServer.upgrade(request)) return undefined;
-      return new Response("ple-omp2 harness: WebSocket endpoint\n", {
+      return new Response("physical-harness harness: WebSocket endpoint\n", {
         status: 200,
         headers: { "content-type": "text/plain" },
       });
@@ -437,7 +437,7 @@ export function startServer(): { port: number; stop: () => void } {
         connection.bridge = bridge;
         const log = (line: string) => {
           bridge.log(line);
-          if (process.env.PLE_LOG_LEVEL !== "silent") process.stderr.write(`[ple-omp2] ${line}\n`);
+          if (process.env.PLE_LOG_LEVEL !== "silent") process.stderr.write(`[physical-harness] ${line}\n`);
         };
         void runTask(connection, bridge, task, log);
       },
@@ -449,7 +449,7 @@ export function startServer(): { port: number; stop: () => void } {
     },
   });
 
-  process.stderr.write(`[ple-omp2] listening on 0.0.0.0:${server.port}\n`);
+  process.stderr.write(`[physical-harness] listening on 0.0.0.0:${server.port}\n`);
   return { port: server.port, stop: () => server.stop(true) };
 }
 
