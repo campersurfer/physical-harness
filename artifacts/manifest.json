@@ -1,0 +1,78 @@
+{
+  "format": 1,
+  "dev_set": "85ad6d96fbf76ee64d9fb6339b3bf342b07128a2ebadc0a10f008c95dac01a48",
+  "created": "2026-11-16T01:05:45Z",
+  "harness": {
+    "name": "ple-omp2",
+    "model_api": "google-cloud/gemini-4-argon",
+    "tree": "5f4c102d417488373cb79818719b006b8da72b79a8bd307db8c1147e33db8264",
+    "files": {
+      ".gitignore": "100644 822b1d18d6067b1337572aad12fbacf518d2299f",
+      "LICENSE": "100644 315ca649d0176268e17bc39c81a6543c5010d84d",
+      "README.md": "100644 d6b94507911517b09c867c444c81350f829b2772",
+      "STATUS.md": "100644 8ef921b60f1bc6168187f759a2c4b3f687af9c95",
+      "bun.lock": "100644 0321b51b0e2aa56a21236eb9e5bbb212171ff591",
+      "package.json": "100644 675217f2f4f89eb958b8c01dc051aef11134178f",
+      "prompts/system.md": "100644 5b5549b299b55b5e0006a344e86bc0202937fbb4",
+      "serve.ts": "100644 70678854dd7ea198470637d91e8f7bc6271585f1",
+      "src/mcp.ts": "100644 34d38cbdce89164417070e4cf13af6a399848615",
+      "src/omp.ts": "100644 46dc047ab9108b32f81f62204da426de0b7c1b67",
+      "src/protocol.ts": "100644 94bd412108a94f381ee1664cc679402199cba228",
+      "src/server.ts": "100644 cabac82a1b0e524e1ba36da0d18a9c18f7f4ffec",
+      "src/tools.ts": "100644 297c1dc275d47a533986b035a458c23eba8e6ac6",
+      "submission.yaml": "100644 7352f71ab343e2a6843b2e34891530f56fc4da8c",
+      "test/bridge.test.ts": "100644 f627b2afcc09b813ad568c7d531e79aa78a57b6d",
+      "test/container-check.ts": "100644 e4ddd4096b353559efaa1114509b35ae1ab22e56",
+      "test/fixture.ts": "100644 1623e1b0f004fd4c283043238d506b7bdd4790db",
+      "test/mock-model.ts": "100644 a3942009fde99906bcd5dbd036fb0d7f3cb040c8",
+      "test/protocol.test.ts": "100644 b6f9a37fccb4a4b82329376ada2b059a94a6a5aa",
+      "test/stub-model.py": "100755 d9fcd92a8c1425d217aacb613a55fc39ca113543"
+    },
+    "commit": "3c14f3f475b33bdeb448289f49baebbdf3f6fc9f",
+    "dirty": false
+  },
+  "tasks": {
+    "footing-settlement-verification": {
+      "run": "real2",
+      "trial": "footing-settlement-verification__6Gm3inC",
+      "ended": "ok",
+      "reward": 0.306452,
+      "tree": "5f4c102d417488373cb79818719b006b8da72b79a8bd307db8c1147e33db8264",
+      "dev_set": "85ad6d96fbf76ee64d9fb6339b3bf342b07128a2ebadc0a10f008c95dac01a48",
+      "files": {
+        "filesystem/Thelbridge_Verification_Memo_Item051_BlockC.docx": "7525ff4e610b992d892b36f32c2d91153bb44ab2"
+      },
+      "final_message": "f71209d583a5d79fdf8b95bcf3579b2319621696",
+      "deleted": [],
+      "skipped": []
+    },
+    "lv-cable-sizing": {
+      "run": "real2",
+      "trial": "lv-cable-sizing__B62YbSn",
+      "ended": "ok",
+      "reward": 0.823194,
+      "tree": "5f4c102d417488373cb79818719b006b8da72b79a8bd307db8c1147e33db8264",
+      "dev_set": "85ad6d96fbf76ee64d9fb6339b3bf342b07128a2ebadc0a10f008c95dac01a48",
+      "files": {
+        "filesystem/electrical__lv_cable_sizing__blind/output/submission.zip": "25f3558463c5acf68d0e0c289643f050461112b2"
+      },
+      "final_message": "1e56fb0fea4c81d69fc7e6a2ea7c8cdcd6d5d7c4",
+      "deleted": [],
+      "skipped": []
+    },
+    "wind-diaphragm-shear": {
+      "run": "real2",
+      "trial": "wind-diaphragm-shear__uz7UEbR",
+      "ended": "ok",
+      "reward": 0.311111,
+      "tree": "5f4c102d417488373cb79818719b006b8da72b79a8bd307db8c1147e33db8264",
+      "dev_set": "85ad6d96fbf76ee64d9fb6339b3bf342b07128a2ebadc0a10f008c95dac01a48",
+      "files": {
+        "filesystem/final_batch4__structural_task5_wind_diaphragm_shear__blind/output/submission.zip": "60fb6a3e56181733867733a6333ceaa5fbccfad4"
+      },
+      "final_message": "49eda7709a370a1dff8e4840fb04a6d8711b7948",
+      "deleted": [],
+      "skipped": []
+    }
+  }
+}
