@@ -5,6 +5,23 @@ Figures: `docs/architecture.svg`, `docs/failure-breakdown.svg`, `docs/efficiency
 
 ## Headline
 
+**First real dev-set results (8 tasks, one model, no harness tuning): mean 0.475**, bimodal — 0.984 and 0.823 where the
+hard-constraint gate holds, 0.31–0.38 where it does not. The gate, not the objective, is where the points are:
+`wind-diaphragm-shear` met 91% of its constraints and reached 81% of the certified cost bound, yet scored 0.311 because
+`feasible_all=False` caps the affected items at `0.4p` and deletes their objective credit. That is the same failure the
+paper reports for frontier baselines (91% of constraints met, 41.3% of items all-hard-clean), reproduced here.
+
+| Task | Discipline | Grading | Score |
+|---|---|---|---:|
+| `heat-rejection-life-cycle-cost` | Mechanical | checks | **0.984** |
+| `lv-cable-sizing` | Electrical | checks-judge | **0.823** |
+| `mv-conveyance-study` | Electrical | checks | 0.377 |
+| `roof-deck-design` | Structural | checks | 0.357 |
+| `division-26-specifications` | Electrical | checks | 0.321 |
+| `seismic-diaphragm-shear` | Structural | checks | 0.318 |
+| `wind-diaphragm-shear` | Structural | checks | 0.311 |
+| `footing-settlement-verification` | Civil | rubric | 0.306 |
+
 A PLE harness is not a prompt; it is a **contract**. The competition scores each task item as
 `s = 0.4·p + 0.6·G·O′`, where one broken hard constraint (`G = 0`) caps the item at 0.4 and deletes every point of
 objective credit, and where a quarter of the baseline's zero-scored runs never produced a gradable file at all. So this
@@ -46,16 +63,24 @@ they are removed rather than discouraged.
    Maintenance calls (compaction summaries) are not always delivered as settled messages, so reported cost is a lower
    bound; the writeup says so rather than implying exactness.
 
-## Engineering reasoning on a real task «pending»
+## Engineering reasoning on a real task
 
-Walkthrough of one dev task's trajectory against the workflow a licensed engineer would follow (corpus triage →
-governing document → computation with code → deliverable in the requested format → reviewer-style self-check), with
-the actual failure or success and the tokens it cost.
+`wind-diaphragm-shear` (structural, `checks`) in 71 protocol requests: the agent inventoried the project corpus, read
+the governing sheets, computed with code, and emitted a parseable deliverable — `status: ok`, `parse_ok: true`,
+`valid: 1.0`, objective 0.812 of the certified cost bound. What it did *not* do is demonstrate that every hard
+requirement held: the grader reports `feasible_all=False`. That is the difference between "an engineer would sign this"
+and "an engineer would sign this after checking the drift and edge-zone provisions", and the grader is right to price
+it the way it does.
 
 ## Efficiency (figure 2)
 
-Score against tokens per task for the dev subset, with the measured mean marked, from the same receipts file that
-produced the failure breakdown. «pending»
+Score against tokens per task, with the measured mean marked, from the same receipts file that produced the failure
+breakdown. Across the eight tasks: **7.86M input / 1.77M output tokens** — roughly 1.2M input tokens per task, because
+the corpus is large and the agent re-reads what it needs. The spread is informative: the two high-scoring tasks were not
+the cheapest (`heat-rejection-life-cycle-cost` 1.0M in, `lv-cable-sizing` 0.37M in) but the *longest* run by requests
+(`division-26-specifications`, 158 requests, 2.74M in) scored 0.321 — effort spent, gate still failed. Cost is a
+lower bound here: usage frames come from settled assistant messages, and compaction summaries are not always among
+them.
 
 ## Cross-model generalizability
 
