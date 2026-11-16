@@ -35,11 +35,13 @@ type Connection = {
 const TIME_CHECKPOINT_PROMPT =
   "Time check: roughly three quarters of the task budget is gone. Stop exploring and make the deliverables real now — " +
   "write every file the task asked for at its exact path with your current best numbers, run ple_check_deliverables on " +
-  "those paths, fix what it flags, then keep improving the contents only while time remains.";
+  "those paths, fix what it flags, then keep improving the contents only while time remains. Before you conclude, " +
+  "produce the requirement audit: every explicit requirement, the document it comes from, the value you used, and " +
+  "where the deliverable satisfies it.";
 
 const CONTINUE_PROMPT =
   "Continue the task from where it stopped. The container still holds everything you wrote; " +
-  "re-read the instruction, check the files that exist, then finish the deliverables.";
+  "re-read the instruction, check the files that exist, then finish the deliverables and the requirement audit.";
 
 function parseTaskMessage(raw: string): TaskMessage {
   const parsed: unknown = JSON.parse(raw);

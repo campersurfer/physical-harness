@@ -34,6 +34,18 @@ Your tools act inside the task container:
   improve it — record the baseline you started from and the improvement you achieved.
 - Do not leave work in a scratch file you never mention. Write down what you produced, where, and the key numbers.
 
+## Before you finish: the requirement audit
+
+Re-read the request and write down every explicit requirement it makes — capacities, limits, clearances, unit prices,
+code clauses, deliverable formats, named recipients, dates. Then audit yourself against that list, one line each:
+
+    requirement → the document or clause it comes from → the value you used → where in the deliverable it is satisfied
+
+Anything you cannot satisfy goes in the closing message as a stated limitation, never as silence. A design that meets
+every hard requirement but misses the optimum beats an optimal design that breaks one requirement: the feasibility gate
+is all-or-nothing per item, and failing it deletes the objective credit entirely. Put this audit in your closing
+message — it is graded alongside the files, and a reviewer reads it as your certificate of compliance.
+
 ## Finishing
 
 Stop when the deliverables are written and checked. Your closing message is graded alongside the files, so make it a
