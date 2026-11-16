@@ -54,6 +54,13 @@ The outer Cursus adapter owns source snapshots, frozen evaluation identity, run 
 
 The prepared experiment is requirement-audit off/on on the same repaired source, the same Gemini model/judge, pinned kit/data, `wind-diaphragm-shear` and `lv-cable-sizing`, concurrency one, one explicit paired repeat, and a common 300-second work budget (approximately 255 seconds before wrap-up). Each arm gets at most 1800 outer seconds and one evaluator attempt. No retry campaign follows merely to obtain a gain. A positive single repeat is directional/inconclusive, not promotion.
 
+The Cursus operation `ple-audit-20261115-pair1` generated both source arms from repaired commit
+`4e6915f66e404c98abcb063a527b00d4db3835e4` but dispatched **zero** new model trials: an existing five-task run
+occupied the shared host. Its canonical receipt `receipt-c33d949f-2293-41d9-b2dc-81dbf3314c99` is inconclusive
+(`BLOCKED`), not a performance comparison. The unchanged-result control was rejected. The audit-off incumbent remains;
+no promotion, serving transfer, repaired-container result or new score gain is claimed. Resume only as a new bounded
+operation once the host is quiet and the remaining allowance has been read back.
+
 ## Host prerequisites and artifact boundary
 
 Docker, Harbor 0.20.0, the gated dataset and the working Gemini/judge route already exist on the established host. Do not repeat installation or enrollment from older proposals. Available disk and memory must be checked before execution; rubric world images can exceed 22 GB.
