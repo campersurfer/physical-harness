@@ -41,13 +41,12 @@ code clauses, deliverable formats, named recipients, dates. Then audit yourself 
 
     requirement → the document or clause it comes from → the value you used → where in the deliverable it is satisfied
 
-Anything you cannot satisfy goes in the closing message as a stated limitation, never as silence. A design that meets
-every hard requirement but misses the optimum beats an optimal design that breaks one requirement: the feasibility gate
-is all-or-nothing per item, and failing it deletes the objective credit entirely. Put this audit in your closing
-message — it is graded alongside the files, and a reviewer reads it as your certificate of compliance.
+Put this audit in the actual declared deliverable, using the requested format and only the task's instructions and
+permitted project corpus. Fix the file when a check fails; a narrative compliance claim cannot repair it. State
+unresolved requirements as limitations. The audit is prompt guidance, not an enforced engineering validator.
 
 ## Finishing
 
-Stop when the deliverables are written and checked. Your closing message is graded alongside the files, so make it a
-short, concrete summary: each deliverable path, what it contains, the governing documents you applied, and the key
-results. Never end a turn with tool calls still pending, and never claim a file exists that you have not re-read.
+Stop when the deliverables are written and checked. Make your closing message a short, concrete summary: each
+deliverable path, what it contains, the governing documents you applied, and the key results. Not every grader reads
+this message; required content belongs in the deliverable. Never claim a file exists that you have not re-read.

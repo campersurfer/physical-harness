@@ -120,9 +120,14 @@ async function loadTestModel(): Promise<{ model: unknown; providerId: string; ap
 
 export async function createPleSession(options: SessionOptions): Promise<PleSession> {
   const { bridge, instruction, workdir, secondsLeft } = options;
+  bridge.signal.throwIfAborted();
   const configuredModelName = process.env.MODEL_NAME;
 
-  const systemPromptBody = await Bun.file(SYSTEM_PROMPT_PATH).text();
+  const promptBody = await Bun.file(SYSTEM_PROMPT_PATH).text();
+  const systemPromptBody = process.env.PLE_REQUIREMENT_AUDIT === "off"
+    ? promptBody.replace(/## Before you finish: the requirement audit\n[\s\S]*?(?=## Finishing)/, "")
+    : promptBody;
+  bridge.signal.throwIfAborted();
   const systemPrompt = [
     systemPromptBody.trim(),
     "",
@@ -157,9 +162,12 @@ export async function createPleSession(options: SessionOptions): Promise<PleSess
 
   const agentDir = process.env.HOME ? `${process.env.HOME}/.ple-omp` : "/tmp/ple-omp";
   const authStorage = await discoverAuthStorage(undefined, { settings });
+  bridge.signal.throwIfAborted();
 
   const testModel = await loadTestModel();
+  bridge.signal.throwIfAborted();
   const mcpSessions = await openMcpSessions(bridge);
+  bridge.signal.throwIfAborted();
   const customTools: CustomTool[] = createTools(bridge, mcpSessions);
   const toolNames = customTools.map((tool) => tool.name);
 
@@ -286,6 +294,12 @@ export async function createPleSession(options: SessionOptions): Promise<PleSess
     session = created.session;
   }
 
+  if (bridge.cancelled) {
+    void session.abort().catch(() => undefined);
+    await session.dispose();
+    bridge.signal.throwIfAborted();
+  }
+
   const activeTools = session.getActiveToolNames();
   const missing = toolNames.filter((name) => !activeTools.includes(name));
   const extra = activeTools.filter((name) => !toolNames.includes(name));
@@ -314,7 +328,7 @@ export function renderTaskPrompt(options: { instruction: string; workdir: string
   if (options.mcpServers.length > 0) {
     lines.push(
       `Task application servers available: ${options.mcpServers.join(", ")}.`,
-      "Use ple_mcp with action=list to see a server's tools, then action=call to use one.",
+      "Use ple_mcp action=list with offset/query for the compact index, action=schema for the selected tool's complete arguments, then action=call.",
       "",
     );
   }

@@ -40,9 +40,14 @@ test(
       }
       expect(result.logs.some((line) => line.includes("tools=ple_exec,ple_read_file,ple_write_file,ple_check_deliverables,ple_mcp"))).toBe(true);
       // Every tool call is visible in the run log, with its duration.
-      const toolLines = result.logs.filter((line) => line.startsWith("tool "));
-      expect(toolLines.length).toBeGreaterThanOrEqual(4);
-      expect(toolLines.every((line) => /tool \w+ (ok|failed) in \d+ms/.test(line))).toBe(true);
+      const toolOutcomes = result.logs.filter((line) => line.startsWith('{"event":"tool_outcome"'))
+        .map((line) => JSON.parse(line));
+      expect(toolOutcomes.length).toBeGreaterThanOrEqual(4);
+      expect(toolOutcomes.every((event) => event.ms >= 0 && typeof event.is_error === "boolean")).toBe(true);
+      expect(toolOutcomes.find((event) => event.tool === "ple_exec").details).toMatchObject({
+        transport: "ok", outcome: "process_exit", exit_code: 0, timed_out: false,
+        user_goal_outcome: "not_adjudicated",
+      });
     } finally {
       await result.cleanup();
     }
@@ -57,6 +62,9 @@ test(
     try {
       expect(result.doneReceived).toBe(true);
       expect(result.errorFrames).toEqual([]);
+      expect(result.oneWay.filter((frame) => frame.type === "done")).toHaveLength(1);
+      // `frames` holds evaluator requests only; cancellation follows the first.
+      expect(result.frames).toHaveLength(1);
     } finally {
       await result.cleanup();
     }

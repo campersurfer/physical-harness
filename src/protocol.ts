@@ -140,14 +140,18 @@ export class EvaluatorBridge {
   readonly workdir: string;
   readonly limits: TaskLimits;
   readonly mcpServers: McpServer[];
+  /** Effective work budget; the evaluator's declared limits remain unchanged. */
+  readonly taskBudgetSec: number | null;
 
   #socket: SocketLike;
   #pending = new Map<string, Pending>();
-  #queue: Array<() => void> = [];
+  #queue: Array<{ start: () => void; reject: (error: Error) => void }> = [];
   #ids = 0;
   #inflight = 0;
   #cancelled = false;
   #closed = false;
+  #terminal = false;
+  #abortController = new AbortController();
   #startedAt = Date.now();
   #sentOneWay: Record<string, unknown>[] = [];
   /** Facts worth keeping for the closing summary even after cancellation. */
@@ -163,6 +167,14 @@ export class EvaluatorBridge {
       max_output_bytes: task.limits?.max_output_bytes ?? 100_000,
       max_write_bytes: task.limits?.max_write_bytes ?? 10_000_000,
     };
+    const rawBudget = process.env.PLE_TASK_BUDGET_SEC;
+    const softBudget = rawBudget === undefined ? null : Number(rawBudget);
+    if (softBudget !== null && (!Number.isSafeInteger(softBudget) || softBudget <= 0)) {
+      throw new ProtocolError("PLE_TASK_BUDGET_SEC must be a positive finite integer");
+    }
+    const officialBudget = this.limits.agent_timeout_sec;
+    this.taskBudgetSec = softBudget === null ? officialBudget :
+      officialBudget === null ? softBudget : Math.min(officialBudget, softBudget);
     this.mcpServers = task.mcp_servers ?? [];
   }
 
@@ -170,11 +182,16 @@ export class EvaluatorBridge {
     return this.#cancelled;
   }
 
-  /** Seconds left before the evaluator cancels the task; null when untimed. */
+  /** Task-lifetime cancellation, available before any asynchronous setup. */
+  get signal(): AbortSignal {
+    return this.#abortController.signal;
+  }
+
+  /** Seconds left in the effective work budget; null when untimed. */
   secondsLeft(): number | null {
-    if (this.limits.agent_timeout_sec === null) return null;
+    if (this.taskBudgetSec === null) return null;
     const elapsed = (Date.now() - this.#startedAt) / 1000;
-    return Math.max(0, this.limits.agent_timeout_sec - elapsed);
+    return Math.max(0, this.taskBudgetSec - elapsed);
   }
 
   /** Handles one inbound frame. Unknown frames are ignored rather than fatal. */
@@ -207,13 +224,14 @@ export class EvaluatorBridge {
     if (this.#cancelled) return;
     this.#cancelled = true;
     const error = new CancelledError(`the evaluator cancelled this task (${reason})`);
+    for (const queued of this.#queue.splice(0)) queued.reject(error);
     for (const pending of this.#pending.values()) {
       clearTimeout(pending.timer);
       pending.settle();
       pending.reject(error);
     }
     this.#pending.clear();
-    this.#queue.length = 0;
+    this.#abortController.abort(error);
   }
 
   /** Marks the socket as gone so senders stop waiting on it. */
@@ -223,6 +241,7 @@ export class EvaluatorBridge {
   }
 
   #send(message: Record<string, unknown>, timeoutMs: number | null): Promise<ResultFrame> {
+    if (this.secondsLeft() === 0) this.cancel("task work budget exhausted");
     if (this.#cancelled) return Promise.reject(new CancelledError());
     if (this.#closed) return Promise.reject(new ProtocolError("the WebSocket to the evaluator is closed"));
 
@@ -234,11 +253,17 @@ export class EvaluatorBridge {
     const deferred = Promise.withResolvers<ResultFrame>();
     const id = String(message.id);
     const start = () => {
+      if (this.secondsLeft() === 0) this.cancel("task work budget exhausted");
+      if (this.#cancelled || this.#closed) {
+        deferred.reject(new CancelledError());
+        return;
+      }
       this.#inflight += 1;
       const settle = () => {
+        clearTimeout(timer);
         this.#inflight -= 1;
-        const next = this.#queue.shift();
-        if (next) next();
+        if (this.#cancelled || this.#closed) return;
+        this.#queue.shift()?.start();
       };
       let timer: Timer | null = null;
       if (timeoutMs !== null) {
@@ -264,7 +289,7 @@ export class EvaluatorBridge {
       }
     };
     if (this.#inflight < MAX_INFLIGHT) start();
-    else this.#queue.push(start);
+    else this.#queue.push({ start, reject: deferred.reject });
     return deferred.promise;
   }
 
@@ -379,10 +404,12 @@ export class EvaluatorBridge {
   // ---- one-way messages ----------------------------------------------------
 
   log(text: string): void {
+    if (this.#terminal) return;
     this.#oneWay({ type: "log", text: String(text).slice(0, 4000) });
   }
 
   usage(usage: { model: string | null; input: number; output: number; cacheRead: number }): void {
+    if (this.#terminal) return;
     const count = (value: number) => (Number.isSafeInteger(value) && value >= 0 ? value : 0);
     this.stats.modelCalls += 1;
     this.stats.inputTokens += count(usage.input);
@@ -397,10 +424,16 @@ export class EvaluatorBridge {
   }
 
   done(finalMessage: string): void {
+    if (this.#terminal) return;
+    this.#terminal = true;
+    this.cancel("task finished");
     this.#oneWay({ type: "done", final_message: finalMessage });
   }
 
   error(message: string): void {
+    if (this.#terminal) return;
+    this.#terminal = true;
+    this.cancel("task failed");
     this.#oneWay({ type: "error", message: String(message).slice(0, 4000) });
   }
 

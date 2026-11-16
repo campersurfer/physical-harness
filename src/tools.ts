@@ -9,7 +9,7 @@
 
 import { z, type CustomTool } from "@oh-my-pi/pi-coding-agent";
 import { CancelledError, EvaluatorBridge, ProtocolError } from "./protocol";
-import { callMcpTool, listMcpTools, type McpSession } from "./mcp";
+import { callMcpTool, listMcpTools, McpApplicationError, type McpSession } from "./mcp";
 
 const TEXT_HEAD = 24_000;
 const TEXT_TAIL = 6_000;
@@ -26,14 +26,24 @@ function clipText(text: string): string {
   return `${text.slice(0, TEXT_HEAD)}\n[... ${cut} characters cut by the harness ...]\n${text.slice(-TEXT_TAIL)}`;
 }
 
-function describeFailure(error: unknown): { text: string; isError: boolean } {
+function describeFailure(error: unknown) {
   if (error instanceof CancelledError) {
-    return { text: "The evaluator cancelled this task; stop and summarize what exists now.", isError: true };
+    return {
+      text: "The evaluator cancelled this task; stop and summarize what exists now.",
+      isError: true, details: { outcome: "cancelled", transport: "cancelled" },
+    };
   }
-  if (error instanceof ProtocolError) {
-    return { text: `Protocol error: ${error.message}`, isError: true };
+  if (error instanceof McpApplicationError) {
+    return {
+      text: error.message, isError: true,
+      details: { outcome: "application_error", transport: "ok", source: "mcp_rpc", code: error.code },
+    };
   }
-  return { text: `Tool failure: ${String(error)}`, isError: true };
+  return {
+    text: `${error instanceof ProtocolError ? "Protocol error" : "Tool failure"}: ${String(error)}`,
+    isError: true,
+    details: { outcome: error instanceof ProtocolError ? "transport_error" : "harness_error", transport: "failed" },
+  };
 }
 
 export function createTools(bridge: EvaluatorBridge, mcpSessions: Map<string, McpSession>): CustomTool[] {
@@ -55,10 +65,22 @@ export function createTools(bridge: EvaluatorBridge, mcpSessions: Map<string, Mc
         if (result.truncated) parts.push("output truncated by the evaluator");
         if (result.error) parts.push(`error: ${result.error}`);
         const output = result.output.length > 0 ? result.output : "(no output)";
-        return { content: [{ type: "text", text: `${parts.join(" | ")}\n${clipText(output)}` }] };
+        return {
+          content: [{ type: "text", text: `${parts.join(" | ")}\n${clipText(output)}` }],
+          isError: result.error !== null || result.timed_out,
+          details: {
+            transport: result.error ? "failed" : "ok",
+            outcome: result.error ? "transport_error" : result.timed_out ? "process_timeout" : "process_exit",
+            exit_code: result.exit_code,
+            timed_out: result.timed_out,
+            truncated: result.truncated,
+            error: result.error,
+            user_goal_outcome: "not_adjudicated",
+          },
+        };
       } catch (error) {
         const failure = describeFailure(error);
-        return { content: [{ type: "text", text: failure.text }], isError: failure.isError };
+        return { content: [{ type: "text", text: failure.text }], isError: failure.isError, details: failure.details };
       }
     },
   };
@@ -98,7 +120,7 @@ export function createTools(bridge: EvaluatorBridge, mcpSessions: Map<string, Mc
         return { content: [{ type: "text", text: `${header}\n${clipText(slice)}` }] };
       } catch (error) {
         const failure = describeFailure(error);
-        return { content: [{ type: "text", text: failure.text }], isError: failure.isError };
+        return { content: [{ type: "text", text: failure.text }], isError: failure.isError, details: failure.details };
       }
     },
   };
@@ -123,7 +145,7 @@ export function createTools(bridge: EvaluatorBridge, mcpSessions: Map<string, Mc
         return { content: [{ type: "text", text: `Wrote ${content.length} characters to ${path}` }] };
       } catch (error) {
         const failure = describeFailure(error);
-        return { content: [{ type: "text", text: failure.text }], isError: failure.isError };
+        return { content: [{ type: "text", text: failure.text }], isError: failure.isError, details: failure.details };
       }
     },
   };
@@ -230,7 +252,7 @@ export function createTools(bridge: EvaluatorBridge, mcpSessions: Map<string, Mc
         return { content: [{ type: "text", text: `${header}\n${verdicts.join("\n")}` }] };
       } catch (error) {
         const failure = describeFailure(error);
-        return { content: [{ type: "text", text: failure.text }], isError: failure.isError };
+        return { content: [{ type: "text", text: failure.text }], isError: failure.isError, details: failure.details };
       }
     },
   };
@@ -239,14 +261,17 @@ export function createTools(bridge: EvaluatorBridge, mcpSessions: Map<string, Mc
     name: "ple_mcp",
     label: "Call a task MCP application",
     description:
-      "Use the task's application servers (documents, spreadsheets, mail, calendar, CAD). action=list returns the available tools for a server; action=call invokes one with JSON arguments.",
+      "Use the task's application servers. action=list gives a compact paginated index (query searches names/descriptions); action=schema returns one tool's complete input schema; action=call invokes it.",
     parameters: z.object({
-      action: z.enum(["list", "call", "servers"]).describe("servers: list available servers; list: enumerate a server's tools; call: invoke one"),
+      action: z.enum(["list", "schema", "call", "servers"]).describe("Discover tools, retrieve a selected schema, or invoke a tool"),
       server: z.string().optional().describe("Server name from the task message"),
-      tool: z.string().optional().describe("Tool name for action=call"),
+      tool: z.string().optional().describe("Tool name for action=schema or action=call"),
       arguments: z.string().optional().describe("JSON object string of tool arguments"),
+      offset: z.number().int().nonnegative().optional().describe("Index into matching tools (default 0)"),
+      limit: z.number().int().min(1).max(25).optional().describe("Index page size (default 20, max 25)"),
+      query: z.string().optional().describe("Case-insensitive substring to search tool names and descriptions"),
     }),
-    async execute(_toolCallId, { action, server, tool, arguments: rawArguments }, _onUpdate, _context, signal) {
+    async execute(_toolCallId, { action, server, tool, arguments: rawArguments, offset, limit, query }, _onUpdate, _context, signal) {
       try {
         if (signal?.aborted) throw new CancelledError("tool call aborted");
         if (action === "servers") {
@@ -256,10 +281,27 @@ export function createTools(bridge: EvaluatorBridge, mcpSessions: Map<string, Mc
         if (!server) return { content: [{ type: "text", text: "server is required" }], isError: true };
         const session = mcpSessions.get(server);
         if (!session) return { content: [{ type: "text", text: `unknown server: ${server}` }], isError: true };
-        if (action === "list") {
+        if (action === "list" || action === "schema") {
           const tools = await listMcpTools(bridge, session);
-          const rendered = tools.map((entry) => ({ name: entry.name, description: entry.description ?? "" }));
-          return { content: [{ type: "text", text: clipText(JSON.stringify(rendered)) }] };
+          if (action === "schema") {
+            const selected = tools.find((entry) => entry.name === tool);
+            if (!selected) return { content: [{ type: "text", text: `unknown tool: ${String(tool)}` }], isError: true };
+            // Selected schemas are intentionally complete, never middle-clipped.
+            return { content: [{ type: "text", text: JSON.stringify(selected) }] };
+          }
+          const search = query?.toLowerCase() ?? "";
+          const matches = search ? tools.filter((entry) =>
+            entry.name.toLowerCase().includes(search) || entry.description?.toLowerCase().includes(search)) : tools;
+          const start = offset ?? 0;
+          const page = matches.slice(start, start + (limit ?? 20));
+          const next = start + page.length;
+          const rendered = {
+            total: matches.length,
+            offset: start,
+            next_offset: next < matches.length ? next : null,
+            tools: page.map((entry) => ({ name: entry.name, description: (entry.description ?? "").slice(0, 240) })),
+          };
+          return { content: [{ type: "text", text: JSON.stringify(rendered) }] };
         }
         if (!tool) return { content: [{ type: "text", text: "tool is required" }], isError: true };
         let parsedArguments: Record<string, unknown> = {};
@@ -271,10 +313,14 @@ export function createTools(bridge: EvaluatorBridge, mcpSessions: Map<string, Mc
           parsedArguments = parsed as Record<string, unknown>;
         }
         const result = await callMcpTool(bridge, session, tool, parsedArguments);
-        return { content: [{ type: "text", text: clipText(result) }], isError: false };
+        return {
+          content: [{ type: "text", text: clipText(result.text) }],
+          isError: result.isError,
+          details: result.details,
+        };
       } catch (error) {
         const failure = describeFailure(error);
-        return { content: [{ type: "text", text: failure.text }], isError: failure.isError };
+        return { content: [{ type: "text", text: failure.text }], isError: failure.isError, details: failure.details };
       }
     },
   };

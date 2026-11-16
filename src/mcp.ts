@@ -17,6 +17,13 @@ export type McpSession = {
   nextId: number;
 };
 
+export class McpApplicationError extends Error {
+  constructor(message: string, readonly code: unknown) {
+    super(message);
+    this.name = "McpApplicationError";
+  }
+}
+
 const ACCEPT = "application/json, text/event-stream";
 
 function parseSseOrJson(body: string, contentType: string): Record<string, unknown> | null {
@@ -75,6 +82,9 @@ async function rpc(
   if (!response.ok) {
     throw new ProtocolError(`MCP ${session.name} request failed: ${response.error ?? "unknown error"}`);
   }
+  if (response.status < 200 || response.status >= 300) {
+    throw new ProtocolError(`MCP ${session.name} HTTP status ${response.status}`);
+  }
   const returnedSession = headerValue(response.headers, "mcp-session-id");
   if (returnedSession) session.sessionId = returnedSession;
   const body = Buffer.from(response.body).toString("utf8");
@@ -85,7 +95,10 @@ async function rpc(
   const error = parsed.error;
   if (error !== null && typeof error === "object") {
     const message = (error as Record<string, unknown>).message;
-    throw new ProtocolError(`MCP ${session.name} error: ${typeof message === "string" ? message : JSON.stringify(error)}`);
+    throw new McpApplicationError(
+      `MCP ${session.name} error: ${typeof message === "string" ? message : JSON.stringify(error)}`,
+      (error as Record<string, unknown>).code,
+    );
   }
   return parsed;
 }
@@ -94,6 +107,7 @@ async function rpc(
 export async function openMcpSessions(bridge: EvaluatorBridge): Promise<Map<string, McpSession>> {
   const sessions = new Map<string, McpSession>();
   for (const server of bridge.mcpServers) {
+    bridge.signal.throwIfAborted();
     const session: McpSession = {
       name: server.name,
       url: server.url,
@@ -133,24 +147,32 @@ export async function openMcpSessions(bridge: EvaluatorBridge): Promise<Map<stri
 }
 
 export async function listMcpTools(bridge: EvaluatorBridge, session: McpSession): Promise<McpTool[]> {
-  const response = await rpc(bridge, session, { id: session.nextId++, method: "tools/list", params: {} });
-  const result = response.result;
-  if (result === null || typeof result !== "object") return [];
-  const tools = (result as Record<string, unknown>).tools;
-  if (!Array.isArray(tools)) return [];
   const out: McpTool[] = [];
-  for (const entry of tools) {
-    if (entry === null || typeof entry !== "object") continue;
-    const record = entry as Record<string, unknown>;
-    const name = record.name;
-    if (typeof name !== "string") continue;
-    const description = record.description;
-    out.push({
-      name,
-      description: typeof description === "string" ? description : undefined,
-      inputSchema: record.inputSchema,
+  const cursors = new Set<string>();
+  let cursor: string | undefined;
+  do {
+    const response = await rpc(bridge, session, {
+      id: session.nextId++, method: "tools/list", params: cursor ? { cursor } : {},
     });
-  }
+    const result = response.result;
+    if (result === null || typeof result !== "object") break;
+    const record = result as Record<string, unknown>;
+    if (Array.isArray(record.tools)) {
+      for (const entry of record.tools) {
+        if (entry === null || typeof entry !== "object") continue;
+        const tool = entry as Record<string, unknown>;
+        if (typeof tool.name !== "string") continue;
+        out.push({
+          name: tool.name,
+          description: typeof tool.description === "string" ? tool.description : undefined,
+          inputSchema: tool.inputSchema,
+        });
+      }
+    }
+    cursor = typeof record.nextCursor === "string" && record.nextCursor.length > 0 ? record.nextCursor : undefined;
+    if (cursor && cursors.has(cursor)) throw new ProtocolError(`MCP ${session.name} repeated tools/list cursor`);
+    if (cursor) cursors.add(cursor);
+  } while (cursor);
   return out;
 }
 
@@ -160,7 +182,7 @@ export async function callMcpTool(
   tool: string,
   args: Record<string, unknown>,
   timeoutSec = 300,
-): Promise<string> {
+): Promise<{ text: string; isError: boolean; details: Record<string, unknown> }> {
   const response = await rpc(
     bridge,
     session,
@@ -168,16 +190,23 @@ export async function callMcpTool(
     timeoutSec,
   );
   const result = response.result;
-  if (result === null || typeof result !== "object") return JSON.stringify(response);
-  const content = (result as Record<string, unknown>).content;
-  if (!Array.isArray(content)) return JSON.stringify(result);
+  const record = result !== null && typeof result === "object" ? result as Record<string, unknown> : {};
+  const isError = record.isError === true;
   const parts: string[] = [];
-  for (const item of content) {
-    if (item === null || typeof item !== "object") continue;
-    const record = item as Record<string, unknown>;
-    if (typeof record.text === "string") parts.push(record.text);
-    else if (record.type === "image") parts.push(`[image ${String(record.mimeType ?? "unknown")}]`);
-    else parts.push(JSON.stringify(record));
+  if (Array.isArray(record.content)) {
+    for (const item of record.content) {
+      if (item === null || typeof item !== "object") continue;
+      const content = item as Record<string, unknown>;
+      if (typeof content.text === "string") parts.push(content.text);
+      else if (content.type === "image") parts.push(`[image ${String(content.mimeType ?? "unknown")}]`);
+      else parts.push(JSON.stringify(content));
+    }
+  } else {
+    parts.push(JSON.stringify(result ?? response));
   }
-  return parts.join("\n");
+  return {
+    text: parts.join("\n"),
+    isError,
+    details: { transport: "ok", outcome: isError ? "application_error" : "success", mcp_is_error: isError },
+  };
 }

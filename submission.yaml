@@ -16,3 +16,5 @@ install: >-
 serve: /opt/harness/bun/bin/bun {src}/serve.ts
 env:
   PLE_LOG_LEVEL: "info"
+  # Unproven requirement-audit guidance is evaluated as a separate candidate.
+  PLE_REQUIREMENT_AUDIT: "off"

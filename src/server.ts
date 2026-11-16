@@ -7,18 +7,16 @@
  * socket closed without one is scored as a harness failure.
  */
 
-import { EvaluatorBridge, type TaskMessage, parseResultFrame } from "./protocol";
-import { createPleSession, renderTaskPrompt } from "./omp";
+import { EvaluatorBridge, type TaskMessage } from "./protocol";
+import { createPleSession, renderTaskPrompt, type PleSession } from "./omp";
+import type { Timer } from "bun";
 
 const WRAP_UP_MARGIN_SEC = 45;
-const SHUTDOWN_GRACE_SEC = 20;
 
 type Connection = {
   bridge: null | EvaluatorBridge;
-  summary: string;
   finished: boolean;
-  finishing: boolean;
-  deadline: ReturnType<typeof setTimeout> | null;
+  deadline: Timer | null;
   abortRequested: (() => void) | null;
 };
 
@@ -35,13 +33,15 @@ type Connection = {
 const TIME_CHECKPOINT_PROMPT =
   "Time check: roughly three quarters of the task budget is gone. Stop exploring and make the deliverables real now — " +
   "write every file the task asked for at its exact path with your current best numbers, run ple_check_deliverables on " +
-  "those paths, fix what it flags, then keep improving the contents only while time remains. Before you conclude, " +
-  "produce the requirement audit: every explicit requirement, the document it comes from, the value you used, and " +
-  "where the deliverable satisfies it.";
+  "those paths, fix what it flags, then keep improving the contents only while time remains.";
+
+const REQUIREMENT_AUDIT_CHECKPOINT =
+  " Before you conclude, produce the requirement audit: every explicit requirement, the document it comes from, " +
+  "the value you used, and where the deliverable satisfies it.";
 
 const CONTINUE_PROMPT =
   "Continue the task from where it stopped. The container still holds everything you wrote; " +
-  "re-read the instruction, check the files that exist, then finish the deliverables and the requirement audit.";
+  "re-read the instruction, check the files that exist, then finish the deliverables";
 
 function parseTaskMessage(raw: string): TaskMessage {
   const parsed: unknown = JSON.parse(raw);
@@ -85,13 +85,20 @@ function parseTaskMessage(raw: string): TaskMessage {
 }
 
 /** Runs one task and always finishes the trial with a one-way frame. */
-async function runTask(
+export async function runTask(
   connection: Connection,
   bridge: EvaluatorBridge,
   task: TaskMessage,
   log: (text: string) => void,
+  createSession: typeof createPleSession = createPleSession,
 ): Promise<void> {
+  const requirementAudit = process.env.PLE_REQUIREMENT_AUDIT !== "off";
+  const checkpointPrompt = TIME_CHECKPOINT_PROMPT + (requirementAudit ? REQUIREMENT_AUDIT_CHECKPOINT : "");
+  const continuePrompt = CONTINUE_PROMPT + (requirementAudit ? " and the requirement audit." : ".");
   let lastAssistantText = "";
+  let bestAssistantText = "";
+  const timers = new Set<Timer>();
+  let missingAssistantUsage = 0;
   // Two ways a run can stop mid-work: the model's last output was a tool call
   // with no closing text, or automatic compaction ran and the session ended
   // before doing any work with the compacted context.
@@ -100,23 +107,86 @@ async function runTask(
   // Tool telemetry: which tools ran, how long they took, and whether they failed.
   // Arguments are never logged in full — only a short, bounded summary.
   const toolStarted = new Map<string, { name: string; at: number }>();
-  let session: Awaited<ReturnType<typeof createPleSession>> | null = null;
+  let session: PleSession | null = null;
   let unsubscribe: (() => void) | null = null;
 
   const finish = (frame: "done" | "error", text: string) => {
     if (connection.finished) return;
     connection.finished = true;
-    if (connection.deadline) clearTimeout(connection.deadline);
+    clearTimeout(connection.deadline);
+    connection.deadline = null;
+    for (const timer of timers) clearTimeout(timer);
+    timers.clear();
+    connection.abortRequested = null;
+    bridge.signal.removeEventListener("abort", cancel);
+    unsubscribe?.();
+    unsubscribe = null;
+    log(JSON.stringify({
+      event: "usage_accounting",
+      completeness: "lower_bound",
+      included: "settled assistant message_end usage only",
+      excluded: ["off-transcript maintenance/compaction calls", "unsettled or missing-usage model calls"],
+      missing_assistant_usage: missingAssistantUsage,
+      money: null,
+    }));
     const message = text.trim().length > 0 ? text : "(no summary produced)";
     if (frame === "done") bridge.done(message);
     else bridge.error(message);
   };
 
+  const abortSession = () => {
+    if (!session) return;
+    try {
+      session.session.clearQueue();
+    } catch {
+      // Still abort and deliver the terminal if queue cleanup fails.
+    }
+    try {
+      void session.session.abort().catch(() => undefined);
+    } catch {
+      // Terminal delivery must not depend on abort succeeding.
+    }
+  };
+  const cancel = () => {
+    if (connection.finished) return;
+    abortSession();
+    finish("done", lastAssistantText.trim() || bestAssistantText ||
+      "Cancelled; the deliverables already written are the result.");
+  };
+  connection.abortRequested = () => bridge.cancel("task deadline");
+  bridge.signal.addEventListener("abort", cancel, { once: true });
+  if (bridge.cancelled) cancel();
+
+  // Do not hold terminal delivery or cleanup hostage to an unresponsive model.
+  const untilCancelled = async <T>(work: Promise<T>): Promise<T> => {
+    bridge.signal.throwIfAborted();
+    const stopped = Promise.withResolvers<never>();
+    const onAbort = () => stopped.reject(bridge.signal.reason);
+    bridge.signal.addEventListener("abort", onAbort, { once: true });
+    try {
+      return await Promise.race([work, stopped.promise]);
+    } finally {
+      bridge.signal.removeEventListener("abort", onAbort);
+    }
+  };
+
   try {
+    if (connection.finished) return;
     log(`task ${task.session}: workdir=${task.workdir} timeout=${String(task.limits.agent_timeout_sec)}s`);
     const secondsLeft = bridge.secondsLeft();
+    log(JSON.stringify({
+      event: "task_configuration",
+      official_timeout_sec: task.limits.agent_timeout_sec,
+      work_budget_sec: bridge.taskBudgetSec,
+      requirement_audit: requirementAudit,
+    }));
+    if (secondsLeft !== null && secondsLeft <= 0) {
+      bridge.cancel("task work budget exhausted");
+      return;
+    }
 
-    const deadlineMs = secondsLeft === null ? null : Math.max(5, secondsLeft - WRAP_UP_MARGIN_SEC) * 1000;
+    const deadlineMs = secondsLeft === null ? null :
+      Math.max(0, Math.min(secondsLeft, Math.max(5, secondsLeft - WRAP_UP_MARGIN_SEC))) * 1000;
     if (deadlineMs !== null) {
       connection.deadline = setTimeout(() => {
         log("deadline reached: wrapping up");
@@ -129,37 +199,36 @@ async function runTask(
     for (const fraction of checkpoints) {
       const delayMs = Math.max(5, secondsLeft * fraction - WRAP_UP_MARGIN_SEC) * 1000;
       if (delayMs >= deadlineMs!) continue;
-      setTimeout(() => {
+      const timer = setTimeout(() => {
         if (connection.finished || bridge.cancelled || !session) return;
         log(`time checkpoint at ${Math.round(fraction * 100)}% of the budget: steering to deliverables`);
-        void session.session.steer(TIME_CHECKPOINT_PROMPT).catch(() => undefined);
+        void session.session.steer(checkpointPrompt).catch(() => undefined);
       }, delayMs);
+      timers.add(timer);
     }
 
-    session = await createPleSession({
+    session = await createSession({
       bridge,
       instruction: task.instruction,
       workdir: task.workdir,
       secondsLeft,
     });
+    if (connection.finished || bridge.cancelled) {
+      abortSession();
+      return;
+    }
     log(`session ready: model=${session.model} tools=${session.toolNames.join(",")}`);
-
-    connection.abortRequested = () => {
-      void session?.session.abort().catch(() => undefined);
-      // If the agent cannot settle quickly, finish with what we have.
-      setTimeout(() => {
-        finish("done", lastAssistantText || "Cancelled by the evaluator; the deliverables already written are the result.");
-      }, SHUTDOWN_GRACE_SEC * 1000);
-    };
 
     // Usage comes from the settled assistant message only; reporting from both
     // `message_end` and `turn_end` would double-count every model call.
     unsubscribe = session.session.subscribe((event: { type: string; [key: string]: unknown }) => {
+      if (connection.finished || bridge.cancelled) return;
       if (event.type === "message_update") {
         const update = event.assistantMessageEvent as Record<string, unknown> | undefined;
         if (!update) return;
         if (update.type === "text_delta" && typeof update.delta === "string") {
           lastAssistantText += update.delta;
+          bestAssistantText = lastAssistantText;
           endedWithToolCall = false;
           return;
         }
@@ -175,7 +244,10 @@ async function runTask(
         const record = message as Record<string, unknown>;
         if (record.role !== "assistant") return;
         const usage = record.usage;
-        if (usage === null || typeof usage !== "object") return;
+        if (usage === null || typeof usage !== "object") {
+          missingAssistantUsage += 1;
+          return;
+        }
         const usageRecord = usage as Record<string, unknown>;
         const asCount = (value: unknown) => (typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : 0);
         bridge.usage({
@@ -198,8 +270,15 @@ async function runTask(
         toolStarted.delete(id);
         const name = started?.name ?? String(event.toolName ?? "tool");
         const ms = started ? Date.now() - started.at : -1;
-        const failed = event.isError === true;
-        log(`tool ${name} ${failed ? "failed" : "ok"} in ${ms}ms`);
+        const result = event.result as { details?: unknown; isError?: boolean } | undefined;
+        log(JSON.stringify({
+          event: "tool_outcome",
+          tool: name,
+          ms,
+          is_error: event.isError === true || result?.isError === true,
+          details: result?.details ?? null,
+          user_goal_outcome: "not_adjudicated",
+        }));
         return;
       }
       if (event.type === "auto_compaction_start") {
@@ -227,6 +306,7 @@ async function runTask(
     const MAX_TURN_ATTEMPTS = 4;
     const MIN_REMAINING_SEC = 300;
     for (let attempt = 1; attempt <= MAX_TURN_ATTEMPTS; attempt += 1) {
+      if (connection.finished || bridge.cancelled) break;
       lastAssistantText = "";
       const attemptPrompt =
         attempt === 1
@@ -234,20 +314,28 @@ async function runTask(
           : `${prompt}\n\n(A previous attempt at this task failed before it finished. Files already written are still in ` +
             `place: re-read the instruction, inspect what exists, then finish the deliverables.)`;
       try {
-        await session.session.prompt(attemptPrompt, {
+        await untilCancelled(session.session.prompt(attemptPrompt, {
           runCommands: false,
           expandPromptTemplates: false,
           throwOnDrop: true,
-        });
+        }));
         break;
       } catch (error) {
-        if (bridge.cancelled) throw error;
+        if (connection.finished || bridge.cancelled) throw error;
         const remaining = bridge.secondsLeft();
         const hasTime = remaining === null || remaining > MIN_REMAINING_SEC;
         if (attempt >= MAX_TURN_ATTEMPTS || !hasTime) throw error;
         const waitSec = Math.min(240, 30 * 2 ** (attempt - 1));
         log(`turn attempt ${attempt} failed (${error instanceof Error ? error.message : String(error)}); retrying in ${waitSec}s`);
-        await Bun.sleep(waitSec * 1000);
+        const retry = Promise.withResolvers<void>();
+        const timer = setTimeout(retry.resolve, waitSec * 1000);
+        timers.add(timer);
+        try {
+          await untilCancelled(retry.promise);
+        } finally {
+          clearTimeout(timer);
+          timers.delete(timer);
+        }
       }
     }
 
@@ -261,7 +349,7 @@ async function runTask(
     ) {
       const remaining = bridge.secondsLeft();
       if (remaining !== null && remaining <= MIN_REMAINING_SEC) break;
-      if (bridge.cancelled) break;
+      if (connection.finished || bridge.cancelled) break;
       log(
         `run ended mid-work (${endedWithToolCall ? "last output was a tool call" : "compaction ran, then the session stopped"}); ` +
           `continuation ${extra}/${MAX_CONTINUATIONS}`,
@@ -269,18 +357,20 @@ async function runTask(
       endedWithToolCall = false;
       compactedWithoutWork = false;
       lastAssistantText = "";
-      await session.session.prompt(CONTINUE_PROMPT, {
+      await untilCancelled(session.session.prompt(continuePrompt, {
         runCommands: false,
         expandPromptTemplates: false,
         throwOnDrop: true,
-      });
+      }));
     }
 
+    if (connection.finished) return;
     const summary = lastAssistantText.trim().length > 0 ? lastAssistantText : "Task finished.";
     const stats = bridge.stats;
     log(`finished: requests=${stats.requests} execs=${stats.execs} model_calls=${stats.modelCalls}`);
     finish("done", summary);
   } catch (error) {
+    if (connection.finished) return;
     const message = error instanceof Error ? error.message : String(error);
     log(`task failed: ${message}`);
     if (bridge.cancelled && lastAssistantText.trim().length > 0) finish("done", lastAssistantText);
@@ -316,9 +406,7 @@ export function startServer(): { port: number; stop: () => void } {
       open(ws) {
         connections.set(ws, {
           bridge: null,
-          summary: "",
           finished: false,
-          finishing: false,
           deadline: null,
           abortRequested: null,
         });
