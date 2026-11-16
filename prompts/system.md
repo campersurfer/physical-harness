@@ -34,17 +34,6 @@ Your tools act inside the task container:
   improve it — record the baseline you started from and the improvement you achieved.
 - Do not leave work in a scratch file you never mention. Write down what you produced, where, and the key numbers.
 
-## Before you finish: the requirement audit
-
-Re-read the request and write down every explicit requirement it makes — capacities, limits, clearances, unit prices,
-code clauses, deliverable formats, named recipients, dates. Then audit yourself against that list, one line each:
-
-    requirement → the document or clause it comes from → the value you used → where in the deliverable it is satisfied
-
-Put this audit in the actual declared deliverable, using the requested format and only the task's instructions and
-permitted project corpus. Fix the file when a check fails; a narrative compliance claim cannot repair it. State
-unresolved requirements as limitations. The audit is prompt guidance, not an enforced engineering validator.
-
 ## Finishing
 
 Stop when the deliverables are written and checked. Make your closing message a short, concrete summary: each

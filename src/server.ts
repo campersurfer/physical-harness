@@ -92,7 +92,9 @@ export async function runTask(
   log: (text: string) => void,
   createSession: typeof createPleSession = createPleSession,
 ): Promise<void> {
-  const requirementAudit = process.env.PLE_REQUIREMENT_AUDIT !== "off";
+  // Measured negative on a 3-task sample (0.329 -> 0.305, +tokens): the audit is opt-in,
+  // kept for a controlled test on rubric tasks, where the closing message is actually graded.
+  const requirementAudit = process.env.PLE_REQUIREMENT_AUDIT === "on";
   const checkpointPrompt = TIME_CHECKPOINT_PROMPT + (requirementAudit ? REQUIREMENT_AUDIT_CHECKPOINT : "");
   const continuePrompt = CONTINUE_PROMPT + (requirementAudit ? " and the requirement audit." : ".");
   let lastAssistantText = "";
