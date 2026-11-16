@@ -487,8 +487,10 @@ describe("bounded experiment seams", () => {
     expect(socket.sent.filter((frame) => frame.type === "done")).toHaveLength(1);
   });
 
-  for (const audit of [undefined, "off"]) {
-    test(`continuation requirement audit is ${audit === "off" ? "disabled explicitly" : "enabled by default"}`, async () => {
+  // The audit is opt-in after its measured negative (see STATUS.md): absent or
+  // "off" means no audit text, only "on" adds it.
+  for (const audit of [undefined, "off", "on"]) {
+    test(`continuation requirement audit is ${audit === "on" ? "enabled explicitly" : "off unless PLE_REQUIREMENT_AUDIT=on"}`, async () => {
       const previous = process.env.PLE_REQUIREMENT_AUDIT;
       const socket = new FakeSocket();
       const taskMessage = task();
@@ -511,7 +513,7 @@ describe("bounded experiment seams", () => {
       }
       await running!;
       expect(prompts).toHaveLength(2);
-      expect(prompts[1].includes("requirement audit")).toBe(audit !== "off");
+      expect(prompts[1].includes("requirement audit")).toBe(audit === "on");
       expect(socket.sent.filter((frame) => frame.type === "done")).toHaveLength(1);
     });
   }
