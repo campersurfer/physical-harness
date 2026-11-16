@@ -1,0 +1,74 @@
+{
+  "format": 1,
+  "dev_set": "85ad6d96fbf76ee64d9fb6339b3bf342b07128a2ebadc0a10f008c95dac01a48",
+  "created": "2026-11-15T06:44:23Z",
+  "harness": {
+    "name": "ple-omp2",
+    "model_api": "google-cloud/claude-opus-5-5",
+    "tree": "8180ad502e69980fbeeff7144325ea690ea2240db7fca7ef5fde8de3d14b8950",
+    "files": {
+      ".gitignore": "100644 822b1d18d6067b1337572aad12fbacf518d2299f",
+      "LICENSE": "100644 315ca649d0176268e17bc39c81a6543c5010d84d",
+      "README.md": "100644 a8d61f4ea62c4907dfcf45ba80bb832e91bf19ba",
+      "STATUS.md": "100644 053f7ef5523949d7a6eaebe50ac4c391f236e391",
+      "bun.lock": "100644 0321b51b0e2aa56a21236eb9e5bbb212171ff591",
+      "package.json": "100644 675217f2f4f89eb958b8c01dc051aef11134178f",
+      "prompts/system.md": "100644 5b5549b299b55b5e0006a344e86bc0202937fbb4",
+      "serve.ts": "100644 70678854dd7ea198470637d91e8f7bc6271585f1",
+      "src/mcp.ts": "100644 34d38cbdce89164417070e4cf13af6a399848615",
+      "src/omp.ts": "100644 8c532e65eb5adbd6a23283f1726198cb00102d3e",
+      "src/protocol.ts": "100644 94bd412108a94f381ee1664cc679402199cba228",
+      "src/server.ts": "100644 1bd54ccb2510c83ffab7f087b5099cb923eb9672",
+      "src/tools.ts": "100644 297c1dc275d47a533986b035a458c23eba8e6ac6",
+      "submission.yaml": "100644 19867cfdd76f08bc9133488bc169979bc1146e77",
+      "test/bridge.test.ts": "100644 f627b2afcc09b813ad568c7d531e79aa78a57b6d",
+      "test/container-check.ts": "100644 e4ddd4096b353559efaa1114509b35ae1ab22e56",
+      "test/fixture.ts": "100644 76cfd2461406e90f61a77fe67c427b5c3c9ee797",
+      "test/mock-model.ts": "100644 c5d2380b587ef1dbf859dc758c45f1385695a5ad",
+      "test/protocol.test.ts": "100644 6b54a6917b93751e675174f8b56bd6043a872ace",
+      "test/stub-model.py": "100755 d9fcd92a8c1425d217aacb613a55fc39ca113543"
+    },
+    "commit": "e70972e29a3959f620842fd3c041093c1aaad116",
+    "dirty": false
+  },
+  "tasks": {
+    "footing-settlement-verification": {
+      "dev_set": "85ad6d96fbf76ee64d9fb6339b3bf342b07128a2ebadc0a10f008c95dac01a48",
+      "run": "ple-omp2-20261115-043610",
+      "trial": "footing-settlement-verification__5EF96DM",
+      "ended": "ok",
+      "reward": 0.0,
+      "tree": "5f8b6b730abf70905f47148c17bc74ec1760a44ffc6a42ad10fcb95eb2254f96",
+      "files": {
+        "filesystem/results/deliverable.md": "3a0c822769c8095e744bb6af63795d01a3e2d643"
+      },
+      "final_message": "fb4d22f432a89465e89ddfdb43638e957a833bc3",
+      "deleted": [],
+      "skipped": []
+    },
+    "lv-cable-sizing": {
+      "dev_set": "85ad6d96fbf76ee64d9fb6339b3bf342b07128a2ebadc0a10f008c95dac01a48",
+      "run": "ple-omp2-20261115-043610",
+      "trial": "lv-cable-sizing__pbGGBmx",
+      "ended": "ok",
+      "reward": 0.0,
+      "tree": "5f8b6b730abf70905f47148c17bc74ec1760a44ffc6a42ad10fcb95eb2254f96",
+      "files": {},
+      "final_message": "fb4d22f432a89465e89ddfdb43638e957a833bc3",
+      "deleted": [],
+      "skipped": []
+    },
+    "wind-diaphragm-shear": {
+      "run": "usagecheck",
+      "trial": "wind-diaphragm-shear__oux9Sa4",
+      "ended": "ok",
+      "reward": 0.0,
+      "tree": "8180ad502e69980fbeeff7144325ea690ea2240db7fca7ef5fde8de3d14b8950",
+      "dev_set": "85ad6d96fbf76ee64d9fb6339b3bf342b07128a2ebadc0a10f008c95dac01a48",
+      "files": {},
+      "final_message": "fb4d22f432a89465e89ddfdb43638e957a833bc3",
+      "deleted": [],
+      "skipped": []
+    }
+  }
+}
