@@ -5,39 +5,32 @@ Figures: `docs/architecture.svg`, `docs/failure-breakdown.svg`, `docs/efficiency
 
 ## Headline
 
-**16 of 29 dev tasks measured: mean 0.437 (dev subset, exploratory; the leaderboard scores the 56 hidden tasks)**, bimodal — 0.984, 0.823 and 0.765 where the hard-constraint gate holds,
-0.286-0.377 where it fails. `s = 0.4p + 0.6·G·O′` makes the gate the dominant term: one infeasible item loses the top
-60% of that item *and* its objective credit. `wind-diaphragm-shear` is the proof — 91% of constraints met, objective at
-0.81 of the certified cost bound, score 0.311 because `feasible_all=False`. This is the failure the paper reports for
-frontier baselines (91% of constraints met, 41.3% of items all-hard-clean), reproduced here on our own runs.
+**16 of 29 dev tasks measured: mean 0.437** (exploratory dev-subset number; the leaderboard scores the 56 hidden
+tasks), bimodal — 1.000, 0.984, 0.823 where the hard-constraint gate holds, 0.286–0.377 where it fails. `s = 0.4p +
+0.6·G·O′` makes the gate the dominant term: one infeasible item loses the top 60% of that item and its objective
+credit. `wind-diaphragm-shear` is the proof — 91% of constraints met, objective 0.81 of the certified cost bound,
+score 0.311 because `feasible_all=False`. That is the failure the paper reports for frontier baselines, reproduced on
+our own runs.
 
 | Task | Discipline | Grading | Score |
 |---|---|---|---:|
+| `data-center-site-model` | Civil | checks | **1.000** |
 | `heat-rejection-life-cycle-cost` | Mechanical | checks | **0.984** |
 | `lv-cable-sizing` | Electrical | checks-judge | **0.823** |
 | `foundation-strategy` | Civil | checks-judge | **0.765** |
 | `mv-conveyance-study` | Electrical | checks | 0.377 |
 | `frame-extension-method` | Civil | checks | 0.369 |
 | `data-hall-device-takeoff` | Electrical | checks | 0.365 |
-| `roof-deck-design` | Structural | checks | 0.357 / 0.286 (two versions) |
 | `eor-review-corrections` | Structural | checks-judge | 0.347 |
 | `division-26-specifications` | Electrical | checks | 0.321 |
 | `seismic-diaphragm-shear` | Structural | checks | 0.318 |
 | `wind-diaphragm-shear` | Structural | checks | 0.311 |
 | `footing-settlement-verification` | Civil | rubric | 0.306 |
 | `cooling-water-flush-plan` | Mechanical | checks | 0.303 |
-| `data-center-site-model` | Civil | checks | **1.000** |
-| `data-hall-mep-routing(-offset)` | Mechanical | checks | 0.000 (8 clashes, gate false) |
+| `data-hall-mep-routing(-offset)` | Mechanical | checks | 0.000 (8 clashes) |
 
-Both `checks-judge` tasks with a judge call present scored high (0.823, 0.765); the two lowest are `checks`-only.
-A hypothesis that fits the evidence but is **not** yet tested: when a judge reads the deliverable and the closing
-message, careful narrative work pays; when only a programmatic checker reads the files, only the numbers matter.
-
-A PLE harness is not a prompt; it is a **contract**. The competition scores each task item as
-`s = 0.4·p + 0.6·G·O′`, where one broken hard constraint (`G = 0`) caps the item at 0.4 and deletes every point of
-objective credit, and where a quarter of the baseline's zero-scored runs never produced a gradable file at all. So this
-harness spends its complexity on *making deliverables real and verified* — not on reasoning tricks — and puts a single
-OMP2 agent session behind the protocol with a tool surface it cannot escape into the wrong container.
+A PLE harness is not a prompt; it is a **contract**: the deliverables must exist at the exact paths in the exact
+formats, and the hard constraints must hold. This entry spends its complexity there.
 
 ## Architecture (figure 1)
 
