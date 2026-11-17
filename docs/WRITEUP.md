@@ -102,13 +102,9 @@ produced them, as the competition allows.
 
 ## Two zero-score tasks: read the grader before changing anything
 
-`data-hall-mep-routing` and `data-hall-mep-routing-offset` both scored 0.000. The verifier's own report is the reason:
-`gate_1_no_hard_clash: false` with **8 clashes** and a 7.2% violation rate across two distinct rules. The harness
-delivered a parseable model (the task graded it, so the format was fine); the routing simply clashes. That is a
-geometric-optimization failure, not a contract failure — and it is the kind of task where the `0.6·G·O′` gate is doing
-exactly what the benchmark intends. The harness behavior was correct — the deliverable simply failed the
-task's own geometry/constraint checks — so this is a task-difficulty or model-capability signal, not a harness bug, and
-it is not patched around by prompt text.
+`data-hall-mep-routing(-offset)` scored 0.000. The verifier's own report is the reason: `gate_1_no_hard_clash: false`,
+**8 clashes**, 7.2% violation rate over two rules. The harness delivered a parseable model — a contract success — and
+the routing simply clashes; that is geometric optimization, and the gate is pricing it exactly as intended.
 
 ## What did not work
 
