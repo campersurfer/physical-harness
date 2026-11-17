@@ -137,12 +137,11 @@ Note: the Kaggle writeup limit is 2,000 words and drafts are not judged.
 
 ## Cleared gates (what the kit verified, and how)
 
-- `kit validate` / `kit check`: `submission.yaml`, files, build (bundle ~264 MiB in ~50 s), model through the egress
-  proxy, WebSocket accepted 2 s after start, smoke (`hello.txt`), MCP task (`mcp.txt` via an app-server tool), and the
-  artifacts review. The `cancel` stage skips itself when a stand-in model answers in 1 s, so cancellation was verified
-  against the real serve container separately (`test/container-check.ts`: `done` still sent after `cancel`).
-- Protocol behavior is pinned by 27 deterministic tests: request window, 11 MB chunked writes, timeout clamping to the
-  remaining budget, hostile-frame narrowing, tool confinement, cancellation, compaction continuation, time checkpoints
-  and deliverable checking — driven against a local evaluator fixture, no model key needed.
-- Local Vertex access without a sponsored key: a service account on project `ple-vertex` behind the kit's LiteLLM
-  proxy, with a $300 budget and 50/90/100% alerts on the free-trial account (hard cap: $300, expires 2027-02-13).
+`kit check` passes `submission.yaml`, files, build (bundle ~264 MiB in ~50 s), model through the egress proxy, a
+WebSocket accepted 2 s after start, the smoke task (`hello.txt`), the MCP task (`mcp.txt` via an app-server tool) and
+the artifacts review; the `cancel` stage skips itself when a stand-in answers in 1 s, so cancellation was verified
+against the real serve container separately (`test/container-check.ts`). Protocol behavior is pinned by 27
+deterministic tests (request window, chunked writes, timeout clamping, hostile-frame narrowing, tool confinement,
+cancellation, compaction continuation, time checkpoints, deliverable checking) against a local evaluator fixture, no
+model key needed. Local Vertex access uses a service account on project `ple-vertex` behind the kit's LiteLLM proxy,
+with a $300 budget and 50/90/100% alerts on the free-trial account (hard cap $300, expires 2027-02-13).
