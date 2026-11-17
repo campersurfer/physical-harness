@@ -58,21 +58,17 @@ MCP/LSP discovery off, a literal system prompt, and a startup check that the ses
 intended four. OMP's built-in file/shell tools would act on the *harness* container — which holds no project files — so
 they are removed rather than discouraged.
 
-## Failure analysis: three failure classes that are harness bugs, not model bugs (figure 3)
+## Failure analysis: harness bugs, not model bugs (figure 3)
 
-1. **Stopping mid-work after automatic compaction.** With a deterministic model driven past a 6,000-token window, the
-   session settled immediately after compaction with only the summary as its last output — nothing written. On a real
-   six-hour task that silently ends the run near the end of its context budget. The harness now detects both shapes of
-   premature stop (run ends right after compaction; run ends with the model's last output being a tool call) and
-   continues the same session, bounded to three continuations, logging each one.
-2. **Running out of clock with nothing gradable.** The harness steers the *live* session at 75% and 90% of the budget:
-   stop exploring, write every deliverable at its exact path with current numbers, run `ple_check_deliverables`, fix
-   what it flags, then keep improving. A 120-second-budget test with a model that only explores confirms the steer
-   fires and the agent acts on it.
-3. **Cost accounting drift.** Usage frames are emitted from settled assistant messages only, which the evaluator's own
-   record confirms (stub model: 4 calls × 1,200 in / 40 out → `n_input_tokens: 4800`, `n_output_tokens: 160`).
-   Maintenance calls (compaction summaries) are not always delivered as settled messages, so reported cost is a lower
-   bound; the writeup says so rather than implying exactness.
+1. **Stopping mid-work after automatic compaction.** A deterministic model driven past a 6,000-token window showed
+   the session settling right after compaction with nothing written. The harness now detects both premature-stop
+   shapes (run ends after compaction; run ends on a tool call) and continues the same session, bounded, logged.
+2. **Clock exhaustion with nothing gradable.** The harness steers the live session at 75%/90% of the budget to write
+   every deliverable at its exact path, run `ple_check_deliverables`, and fix what it flags; a 120-second-budget test
+   confirms the steer fires and is acted on.
+3. **Cost accounting drift.** Usage frames come from settled assistant messages only; the evaluator's own record
+   confirms one frame per call (4 calls × 1,200 in / 40 out → exactly 4,800 / 160), but compaction summaries are not
+   always among them, so reported cost is a stated lower bound.
 
 ## Engineering reasoning on a real task
 
