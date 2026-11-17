@@ -2,6 +2,14 @@
 
 Last updated 2026-11-16. Evidence classes below are separate; fixtures and scripted gateway rehearsals are not competition performance.
 
+## Current dev-set tally (16 of 29 tasks, gemini-4-argon, 2026-11-16)
+
+Mean over the 16 measured tasks is **0.437**; strong results: 1.000 (civil site model — schema, geometry and all 17
+constraints passed), 0.984 (mechanical LCC), 0.823 (electrical checks-judge). The two `data-hall-mep-routing` tasks
+scored 0.000 — read `verifier/eval.stdout.txt` in those trials for the reason before the freeze run. The 13 `rubric`
+tasks remain and are deferred to the freeze run, one ~20 GB world image at a time (they cannot coexist on a 150 GB
+host). Artifacts are version-bound: the freeze run re-runs every task with the final harness.
+
 ## Source and deterministic checks
 
 - Declared model: `google-cloud/gemini-4-argon`. Claude on the existing Vertex route is quota-blocked; no repeated probes are needed.
