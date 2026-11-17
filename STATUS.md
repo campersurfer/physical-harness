@@ -94,3 +94,10 @@ harness revision:
    before the next, and re-check free space each round. A 150 GB host cannot hold them together.
 4. `kit artifacts` then `kit check` → `ready to submit`; commit harness + `artifacts/` together; Kaggle Writeup with the
    40-char SHA.
+
+## Freeze run (interrupted once, then sequential per task)
+
+The first freeze attempt was killed when its batch of 12 rubric tasks tried to build several ~20 GB world images at
+once and filled the 150 GB host (disk hit 100%; the run self-terminated and pruned). The retry runs **one rubric
+task at a time**, pruning that task's world image immediately after its artifacts export, so disk stays bounded.
+Non-rubric tasks (16 of them) are already measured; `kit check` passes every stage with the real model.
