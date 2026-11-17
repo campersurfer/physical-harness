@@ -121,3 +121,12 @@ it is not patched around by prompt text.
 - Verifying the container path with a scripted stand-in model proved the plumbing without spending credits, but it also
   hid a real difference: the stand-in answered instantly, so the kit's cancel stage skipped itself. Cancel was then
   verified against the real container instead.
+
+## Submission path (what remains)
+
+1. Freeze the harness (the negative audit is already opt-in; no further prompt changes).
+2. Re-run **all 29 dev tasks** with that exact revision — artifacts are version-bound — running the 13 `rubric`
+   tasks one at a time, building and pruning each ~20 GB world image, because a 150 GB host cannot hold them all.
+3. `uv run python -m kit check <entry>` must print `ready to submit`; commit harness + `artifacts/` in one commit.
+4. On Kaggle: Writeups → New Writeup, repo link under Project Links, the 40-char SHA on top, this document (≤2,000 words)
+   with the three figures. Stage 1 is a qualification gate; Stage 2 runs the declared model on 56 hidden tasks.
