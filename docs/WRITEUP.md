@@ -117,13 +117,10 @@ the routing simply clashes; that is geometric optimization, and the gate is pric
 
 ## Submission path (what remains)
 
-
-1. Freeze the harness (the negative audit is already opt-in; no further prompt changes).
-2. Re-run **all 29 dev tasks** with that exact revision — artifacts are version-bound — running the 13 `rubric`
-   tasks one at a time, building and pruning each ~20 GB world image, because a 150 GB host cannot hold them all.
-3. `uv run python -m kit check <entry>` must print `ready to submit`; commit harness + `artifacts/` in one commit.
-4. On Kaggle: Writeups → New Writeup, repo link under Project Links, the 40-char SHA on top, this document (≤2,000 words)
-   with the three figures. Stage 1 is a qualification gate; Stage 2 runs the declared model on 56 hidden tasks.
+Freeze the harness, re-run all 29 dev tasks with that exact revision (artifacts are version-bound), running the 13
+`rubric` tasks one at a time with their ~20 GB world images built and pruned per task. Then `kit check` must print
+`ready to submit`; commit harness + `artifacts/` together; on Kaggle, Writeups → New Writeup with the repo link and the
+40-char SHA. Stage 1 is a qualification gate; Stage 2 runs the declared model on 56 hidden tasks.
 
 ## Cleared gates
 
