@@ -73,11 +73,11 @@ after checking the drift and edge-zone provisions" — and the grader prices it 
 ## Efficiency (figure 2)
 
 Score against tokens per task with the measured mean marked, from the same receipts that produced the failure
-breakdown: **17.4M input / 3.5M output tokens** and **17.1 h of agent time** across 13 tasks — about 1.3M input tokens
-each, because the corpus is large and the agent re-reads what it needs. Effort is not the binding constraint: the
-longest run by requests (`division-26-specifications`, 158 requests, 2.74M in) scored 0.321, while
-`heat-rejection-life-cycle-cost` reached 0.984 on 1.0M in. Cost is a lower bound: usage frames come from settled
-assistant messages, and compaction summaries are not always among them.
+breakdown: **17.4M input / 3.5M output tokens and 17.1 h of agent time across 16 tasks** (~1.1M input tokens each —
+the corpus is large and the agent re-reads what it needs). Effort is not the binding constraint: the longest run by
+requests (`division-26-specifications`, 158 requests, 2.74M in) scored 0.321, while `heat-rejection-life-cycle-cost`
+reached 0.984 on 1.0M in. Reported cost is a lower bound: compaction summaries are not always among the settled
+messages.
 
 ## Cross-model generalizability
 
