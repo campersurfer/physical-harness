@@ -5,7 +5,7 @@ Figures: `docs/architecture.svg`, `docs/failure-breakdown.svg`, `docs/efficiency
 
 ## Headline
 
-**16 of 29 dev tasks measured: mean 0.437**, bimodal — 0.984, 0.823 and 0.765 where the hard-constraint gate holds,
+**16 of 29 dev tasks measured: mean 0.437 (dev subset, exploratory; the leaderboard scores the 56 hidden tasks)**, bimodal — 0.984, 0.823 and 0.765 where the hard-constraint gate holds,
 0.286-0.377 where it fails. `s = 0.4p + 0.6·G·O′` makes the gate the dominant term: one infeasible item loses the top
 60% of that item *and* its objective credit. `wind-diaphragm-shear` is the proof — 91% of constraints met, objective at
 0.81 of the certified cost bound, score 0.311 because `feasible_all=False`. This is the failure the paper reports for
