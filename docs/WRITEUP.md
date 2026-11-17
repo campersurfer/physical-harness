@@ -97,17 +97,20 @@ the routing simply clashes; that is geometric optimization, and the gate is pric
 - A scripted stand-in model proved the container plumbing without spending credits, but it answered instantly, so the
   kit's cancel stage skipped itself — cancellation had to be verified against the real container instead.
 
-## Submission path (what remains)
-
-Freeze the harness, re-run all 29 dev tasks with that exact revision (artifacts are version-bound), running the 13
-`rubric` tasks one at a time with their ~20 GB world images built and pruned per task. Then `kit check` must print
-`ready to submit`; commit harness + `artifacts/` together; on Kaggle, Writeups → New Writeup with the repo link and the
-40-char SHA. Stage 1 is a qualification gate; Stage 2 runs the declared model on 56 hidden tasks.
-
-## Cleared gates
+## Cleared gates and submission path (what remains)
 
 `kit check` passes submission.yaml, files, build (~264 MiB in ~50 s), model through the egress proxy, a WebSocket
 accepted 2 s after start, smoke and MCP tasks, and the artifacts review; cancel was verified against the real serve
 container because the kit's own stage skips itself with an instant stand-in. 27 deterministic tests pin the protocol
 behavior. Local Vertex access uses a service account on `ple-vertex` behind the kit's LiteLLM proxy, with a $300
 budget (50/90/100% alerts) on the free-trial account (hard cap $300, expires 2027-02-13).
+
+Freeze the harness, re-run all 29 dev tasks with that exact revision (artifacts are version-bound), running the 13
+`rubric` tasks one at a time with their ~20 GB world images built and pruned per task. Then `kit check` must print
+`ready to submit`; commit harness + `artifacts/` together; on Kaggle, Writeups → New Writeup with the repo link and the
+40-char SHA. Stage 1 is a qualification gate; Stage 2 runs the declared model on 56 hidden tasks.
+
+Freeze the harness, re-run all 29 dev tasks with that exact revision (artifacts are version-bound), running the 13
+`rubric` tasks one at a time with their ~20 GB world images built and pruned per task. Then `kit check` must print
+`ready to submit`; commit harness + `artifacts/` together; on Kaggle, Writeups → New Writeup with the repo link and the
+40-char SHA. Stage 1 is a qualification gate; Stage 2 runs the declared model on 56 hidden tasks.
