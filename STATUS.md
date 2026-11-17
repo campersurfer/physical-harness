@@ -82,3 +82,15 @@ The official artifact rules permit missing dev-task folders with warnings and ze
 Keep research-arm artifacts and scripted/cross-model rehearsals outside final submission artifacts. Use `--no-export` for research arms; retain each run's organizer-generated manifest unchanged. Final committed artifacts must come from the submitted harness and declared `model_api`, exported by organizer tooling. A manifest model label cannot detect a scripted stand-in.
 
 No official submission or production deployment is authorized by this source update. Future packaging still requires the official artifact review, `kit check`, a deliberately selected harness commit and the owner's submission action.
+
+## Freeze run plan (submission-critical)
+
+Artifacts are version-bound, so the submission set is produced by one coherent pass over all 29 tasks with the frozen
+harness revision:
+
+1. Freeze: no further harness edits after this point; any change means re-running everything.
+2. Non-rubric tasks first (small images, `--trials 2` where memory allows).
+3. The 13 `rubric` tasks one at a time: build the world image (~20 GB, up to 60 min), run, export, **prune the image**
+   before the next, and re-check free space each round. A 150 GB host cannot hold them together.
+4. `kit artifacts` then `kit check` → `ready to submit`; commit harness + `artifacts/` together; Kaggle Writeup with the
+   40-char SHA.
