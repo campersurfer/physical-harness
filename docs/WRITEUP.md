@@ -95,16 +95,14 @@ the routing simply clashes; that is geometric optimization, and the gate is pric
 
 ## What did not work
 
-- **A requirement audit.** Hypothesis: making the agent write an explicit requirement-to-deliverable audit before
-  finishing would raise the all-or-nothing gate. Paired test on the same three tasks, same model: 0.329 → 0.305 (mean),
-  input tokens up from 0.45M to 2.20M on one task. No gain inside the benchmark's own run-to-run noise, so the audit is
-  now opt-in behind `PLE_REQUIREMENT_AUDIT=on`, and it is kept only for a future controlled test on the
-  `rubric`/`checks-judge` families, where the closing message is actually read.
-- A first version emitted usage from the `message_update` terminal event; it never fires for this provider path, so the
-  frames were silently absent. The evaluator-record cross-check is what caught it.
-- Verifying the container path with a scripted stand-in model proved the plumbing without spending credits, but it also
-  hid a real difference: the stand-in answered instantly, so the kit's cancel stage skipped itself. Cancel was then
-  verified against the real container instead.
+- **A requirement audit.** Paired test on the same three tasks, same model: 0.329 → 0.305 mean, input tokens up
+  0.45M → 2.20M on one task — no gain inside the benchmark's own run-to-run noise. The audit is now opt-in
+  (`PLE_REQUIREMENT_AUDIT=on`), kept only for a future controlled test on `rubric`/`checks-judge` tasks, where the
+  closing message is actually graded.
+- Usage frames were first emitted from the `message_update` terminal event, which never fires on this provider path;
+  the evaluator-record cross-check is what caught it.
+- A scripted stand-in model proved the container plumbing without spending credits, but it answered instantly, so the
+  kit's cancel stage skipped itself — cancellation had to be verified against the real container instead.
 
 ## Submission path (what remains)
 
