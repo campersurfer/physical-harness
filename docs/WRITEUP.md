@@ -98,6 +98,14 @@ reachable through the same proxy for a second family). Claude on Vertex is **quo
 organizers' endpoint and key. The committed `artifacts/` were generated locally, and this writeup records the model and
 judge used, as the competition allows.
 
+## Two zero-score tasks: read the grader before changing anything
+
+`data-hall-mep-routing` and `data-hall-mep-routing-offset` both scored 0.000 (65 and 232 protocol requests
+respectively, 6.7M input tokens on the first). The verifier output (`verifier/eval.stdout.txt`) is the authority for why;
+the receipt for that is recorded in STATUS.md. The harness behavior was correct — the deliverable simply failed the
+task's own geometry/constraint checks — so this is a task-difficulty or model-capability signal, not a harness bug, and
+it is not patched around by prompt text.
+
 ## What did not work
 
 - **A requirement audit.** Hypothesis: making the agent write an explicit requirement-to-deliverable audit before
