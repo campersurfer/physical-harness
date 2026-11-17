@@ -95,11 +95,10 @@ assistant messages, and compaction summaries are not always among them.
 ## Cross-model generalizability
 
 Local development ran on `google-cloud/gemini-4-argon`; `glm-5.2`, `gpt-oss-120b` and `gemma-4-26b` were verified
-reachable through the same proxy (a quick connectivity probe only — their dev-set runs are still pending, and this
-writeup says so). Claude on Vertex is **quota-blocked on a fresh project**
-(`429 … submit a quota increase request`), which is a property of the account, not of the harness; Stage 2 uses the
-organizers' endpoint and key. The committed `artifacts/` were generated locally, and this writeup records the model and
-judge used, as the competition allows.
+reachable through the same proxy (connectivity probe only — their dev-set runs are pending and are not claimed here).
+Claude on Vertex is quota-blocked on a fresh project (`429 … quota increase request`), an account property, not a
+harness one; Stage 2 uses the organizers' endpoint and key. The committed `artifacts/` record which model and judge
+produced them, as the competition allows.
 
 ## Two zero-score tasks: read the grader before changing anything
 
