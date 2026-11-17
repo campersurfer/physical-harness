@@ -41,22 +41,14 @@ OMP2 agent session behind the protocol with a tool surface it cannot escape into
 
 ## Architecture (figure 1)
 
-`submission.yaml` starts `serve.ts` (Bun) in the read-only harness container. One WebSocket carries one task.
-`src/protocol.ts` owns the request window (8 concurrent), base64 file IO, cancellation and the one-way `log`/`usage`/
-`done` frames; `src/server.ts` owns the lifecycle and guarantees exactly one `done` per trial; `src/omp.ts` builds the
-OMP2 session and confines it; `src/tools.ts` exposes four host tools that act **only** through the evaluator:
-
-| Tool | Purpose |
-|---|---|
-| `ple_exec` | `bash -c` inside the task container, timeout clamped to the remaining budget |
-| `ple_read_file` / `ple_write_file` | text and binary transfer, chunked writes above 10 MB |
-| `ple_check_deliverables` | verifies each requested path exists, is non-empty, and is really the format it claims (JSON parses, CSV rows align, PDF/Office magic bytes) |
-| `ple_mcp` | the task's app servers (documents, sheets, mail, CAD) over Streamable HTTP, tunnelled through protocol `http` |
-
-Confinement is enforced, not asserted: `customTools` + `toolNames` + `restrictToolNames` + `allowRestrictedCustomTools`,
-MCP/LSP discovery off, a literal system prompt, and a startup check that the session's active tool list equals the
-intended four. OMP's built-in file/shell tools would act on the *harness* container — which holds no project files — so
-they are removed rather than discouraged.
+`serve.ts` (Bun) runs in the read-only harness container; one WebSocket carries one task. `src/protocol.ts` owns the
+request window (8 concurrent), base64 file IO, cancellation and the `log`/`usage`/`done` frames; `src/server.ts` owns
+the lifecycle and guarantees exactly one `done` per trial; `src/omp.ts` builds and confines the OMP2 session;
+`src/tools.ts` exposes four host tools that act **only** through the evaluator: `ple_exec`, `ple_read_file`,
+`ple_write_file`, `ple_check_deliverables` (paths, formats, magic bytes) and `ple_mcp` (the task's app servers over
+Streamable HTTP, tunnelled through protocol `http`). Confinement is enforced, not asserted: `restrictToolNames` plus
+an explicit tool list checked at startup, MCP/LSP discovery off, a literal system prompt — OMP's built-in file/shell
+tools would act on the harness container, which holds no project files.
 
 ## Failure analysis: harness bugs, not model bugs (figure 3)
 
