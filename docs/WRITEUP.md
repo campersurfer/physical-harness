@@ -92,8 +92,9 @@ assistant messages, and compaction summaries are not always among them.
 
 ## Cross-model generalizability
 
-Local development ran on `google-cloud/gemini-4-argon` (with `glm-5.2`, `gpt-oss-120b` and `gemma-4-26b` verified
-reachable through the same proxy for a second family). Claude on Vertex is **quota-blocked on a fresh project**
+Local development ran on `google-cloud/gemini-4-argon`; `glm-5.2`, `gpt-oss-120b` and `gemma-4-26b` were verified
+reachable through the same proxy (a quick connectivity probe only — their dev-set runs are still pending, and this
+writeup says so). Claude on Vertex is **quota-blocked on a fresh project**
 (`429 … submit a quota increase request`), which is a property of the account, not of the harness; Stage 2 uses the
 organizers' endpoint and key. The committed `artifacts/` were generated locally, and this writeup records the model and
 judge used, as the competition allows.
