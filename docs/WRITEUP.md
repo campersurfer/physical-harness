@@ -126,7 +126,6 @@ it is not patched around by prompt text.
 
 ## Submission path (what remains)
 
-Note: the Kaggle writeup limit is 2,000 words and drafts are not judged.
 
 1. Freeze the harness (the negative audit is already opt-in; no further prompt changes).
 2. Re-run **all 29 dev tasks** with that exact revision — artifacts are version-bound — running the 13 `rubric`
