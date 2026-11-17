@@ -5,7 +5,7 @@ Figures: `docs/architecture.svg`, `docs/failure-breakdown.svg`, `docs/efficiency
 
 ## Headline
 
-**13 of 29 dev tasks measured: mean 0.452**, bimodal — 0.984, 0.823 and 0.765 where the hard-constraint gate holds,
+**16 of 29 dev tasks measured: mean 0.437**, bimodal — 0.984, 0.823 and 0.765 where the hard-constraint gate holds,
 0.286-0.377 where it fails. `s = 0.4p + 0.6·G·O′` makes the gate the dominant term: one infeasible item loses the top
 60% of that item *and* its objective credit. `wind-diaphragm-shear` is the proof — 91% of constraints met, objective at
 0.81 of the certified cost bound, score 0.311 because `feasible_all=False`. This is the failure the paper reports for
@@ -26,6 +26,8 @@ frontier baselines (91% of constraints met, 41.3% of items all-hard-clean), repr
 | `wind-diaphragm-shear` | Structural | checks | 0.311 |
 | `footing-settlement-verification` | Civil | rubric | 0.306 |
 | `cooling-water-flush-plan` | Mechanical | checks | 0.303 |
+| `data-center-site-model` | Civil | checks | **1.000** |
+| `data-hall-mep-routing(-offset)` | Mechanical | checks | 0.000 (8 clashes, gate false) |
 
 Both `checks-judge` tasks with a judge call present scored high (0.823, 0.765); the two lowest are `checks`-only.
 A hypothesis that fits the evidence but is **not** yet tested: when a judge reads the deliverable and the closing
