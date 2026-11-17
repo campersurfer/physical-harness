@@ -132,3 +132,15 @@ it is not patched around by prompt text.
 3. `uv run python -m kit check <entry>` must print `ready to submit`; commit harness + `artifacts/` in one commit.
 4. On Kaggle: Writeups → New Writeup, repo link under Project Links, the 40-char SHA on top, this document (≤2,000 words)
    with the three figures. Stage 1 is a qualification gate; Stage 2 runs the declared model on 56 hidden tasks.
+
+## Cleared gates (what the kit verified, and how)
+
+- `kit validate` / `kit check`: `submission.yaml`, files, build (bundle ~264 MiB in ~50 s), model through the egress
+  proxy, WebSocket accepted 2 s after start, smoke (`hello.txt`), MCP task (`mcp.txt` via an app-server tool), and the
+  artifacts review. The `cancel` stage skips itself when a stand-in model answers in 1 s, so cancellation was verified
+  against the real serve container separately (`test/container-check.ts`: `done` still sent after `cancel`).
+- Protocol behavior is pinned by 27 deterministic tests: request window, 11 MB chunked writes, timeout clamping to the
+  remaining budget, hostile-frame narrowing, tool confinement, cancellation, compaction continuation, time checkpoints
+  and deliverable checking — driven against a local evaluator fixture, no model key needed.
+- Local Vertex access without a sponsored key: a service account on project `ple-vertex` behind the kit's LiteLLM
+  proxy, with a $300 budget and 50/90/100% alerts on the free-trial account (hard cap: $300, expires 2027-02-13).
