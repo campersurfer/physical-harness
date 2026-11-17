@@ -135,13 +135,12 @@ Note: the Kaggle writeup limit is 2,000 words and drafts are not judged.
 4. On Kaggle: Writeups → New Writeup, repo link under Project Links, the 40-char SHA on top, this document (≤2,000 words)
    with the three figures. Stage 1 is a qualification gate; Stage 2 runs the declared model on 56 hidden tasks.
 
-## Cleared gates (what the kit verified, and how)
+## Cleared gates
 
-`kit check` passes `submission.yaml`, files, build (bundle ~264 MiB in ~50 s), model through the egress proxy, a
-WebSocket accepted 2 s after start, the smoke task (`hello.txt`), the MCP task (`mcp.txt` via an app-server tool) and
-the artifacts review; the `cancel` stage skips itself when a stand-in answers in 1 s, so cancellation was verified
-against the real serve container separately (`test/container-check.ts`). Protocol behavior is pinned by 27
-deterministic tests (request window, chunked writes, timeout clamping, hostile-frame narrowing, tool confinement,
-cancellation, compaction continuation, time checkpoints, deliverable checking) against a local evaluator fixture, no
-model key needed. Local Vertex access uses a service account on project `ple-vertex` behind the kit's LiteLLM proxy,
-with a $300 budget and 50/90/100% alerts on the free-trial account (hard cap $300, expires 2027-02-13).
+`kit check` passes submission.yaml, files, build (~264 MiB bundle in ~50 s), model through the egress proxy, a
+WebSocket accepted 2 s after start, the smoke and MCP tasks, and the artifacts review; cancel was verified against
+the real serve container because the kit's own stage skips itself with an instant stand-in. 27 deterministic tests
+pin the protocol behavior (request window, chunked writes, timeout clamping, hostile frames, tool confinement,
+cancellation, compaction continuation, time checkpoints, deliverable checks) against a local evaluator fixture.
+Local Vertex access uses a service account on `ple-vertex` behind the kit's LiteLLM proxy, with a $300 budget and
+50/90/100% alerts on the free-trial account (hard cap $300, expires 2027-02-13).
