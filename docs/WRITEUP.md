@@ -64,12 +64,11 @@ tools would act on the harness container, which holds no project files.
 
 ## Engineering reasoning on a real task
 
-`wind-diaphragm-shear` (structural, `checks`) in 71 protocol requests: the agent inventoried the project corpus, read
-the governing sheets, computed with code, and emitted a parseable deliverable — `status: ok`, `parse_ok: true`,
-`valid: 1.0`, objective 0.812 of the certified cost bound. What it did *not* do is demonstrate that every hard
-requirement held: the grader reports `feasible_all=False`. That is the difference between "an engineer would sign this"
-and "an engineer would sign this after checking the drift and edge-zone provisions", and the grader is right to price
-it the way it does.
+`wind-diaphragm-shear` (structural, `checks`) in 71 protocol requests: the agent inventoried the corpus, read the
+governing sheets, computed with code, and produced a parseable deliverable — `status: ok`, `valid: 1.0`, objective 0.81
+of the certified cost bound. What it did not demonstrate is that every hard requirement held: the grader reports
+`feasible_all=False`. That is the difference between "an engineer would sign this" and "an engineer would sign this
+after checking the drift and edge-zone provisions" — and the grader prices it correctly.
 
 ## Efficiency (figure 2)
 
