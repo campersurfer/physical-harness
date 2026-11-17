@@ -136,10 +136,8 @@ it is not patched around by prompt text.
 
 ## Cleared gates
 
-`kit check` passes submission.yaml, files, build (~264 MiB bundle in ~50 s), model through the egress proxy, a
-WebSocket accepted 2 s after start, the smoke and MCP tasks, and the artifacts review; cancel was verified against
-the real serve container because the kit's own stage skips itself with an instant stand-in. 27 deterministic tests
-pin the protocol behavior (request window, chunked writes, timeout clamping, hostile frames, tool confinement,
-cancellation, compaction continuation, time checkpoints, deliverable checks) against a local evaluator fixture.
-Local Vertex access uses a service account on `ple-vertex` behind the kit's LiteLLM proxy, with a $300 budget and
-50/90/100% alerts on the free-trial account (hard cap $300, expires 2027-02-13).
+`kit check` passes submission.yaml, files, build (~264 MiB in ~50 s), model through the egress proxy, a WebSocket
+accepted 2 s after start, smoke and MCP tasks, and the artifacts review; cancel was verified against the real serve
+container because the kit's own stage skips itself with an instant stand-in. 27 deterministic tests pin the protocol
+behavior. Local Vertex access uses a service account on `ple-vertex` behind the kit's LiteLLM proxy, with a $300
+budget (50/90/100% alerts) on the free-trial account (hard cap $300, expires 2027-02-13).
